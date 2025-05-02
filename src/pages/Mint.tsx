@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -69,7 +68,7 @@ const Mint = () => {
       
       toast({
         title: "Mint Successful!",
-        description: `You have successfully minted ${quantity} NFT${quantity > 1 ? 's' : ''}.`,
+        description: `You have successfully minted ${quantity.toString()} NFT${quantity > 1 ? 's' : ''}.`,
       });
       
       // In a real app, we would update Supabase here

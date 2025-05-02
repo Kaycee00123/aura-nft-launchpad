@@ -1,4 +1,3 @@
-
 // Mock data for NFT drops
 export type Creator = {
   id: string;
@@ -6,6 +5,11 @@ export type Creator = {
   avatar: string;
   verified: boolean;
   totalSales: number;
+  bannerImage?: string;
+  twitter?: string;
+  instagram?: string;
+  website?: string;
+  bio?: string;
 };
 
 export type NFTDrop = {
@@ -36,6 +40,11 @@ export const mockCreators: Creator[] = [
     avatar: "https://api.dicebear.com/7.x/personas/svg?seed=PixelMaster",
     verified: true,
     totalSales: 1245,
+    bannerImage: "https://images.unsplash.com/photo-1634926878768-2a5b3c42f139?q=80&w=1920&auto=format&fit=crop",
+    twitter: "pixelmaster",
+    instagram: "pixel_master",
+    website: "https://pixelmaster.art",
+    bio: "Creating digital art since 2010. Specializing in pixel art and retro game aesthetics.",
   },
   {
     id: "2",
@@ -43,6 +52,11 @@ export const mockCreators: Creator[] = [
     avatar: "https://api.dicebear.com/7.x/personas/svg?seed=CryptoArtist",
     verified: true,
     totalSales: 982,
+    bannerImage: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?q=80&w=1920&auto=format&fit=crop",
+    twitter: "cryptoartist",
+    instagram: "crypto_artist",
+    website: "https://cryptoartist.io",
+    bio: "Blockchain art enthusiast and pioneer in the NFT space since 2018.",
   },
   {
     id: "3",
@@ -50,6 +64,10 @@ export const mockCreators: Creator[] = [
     avatar: "https://api.dicebear.com/7.x/personas/svg?seed=NFTWizard",
     verified: false,
     totalSales: 657,
+    bannerImage: "https://images.unsplash.com/photo-1629392554711-1b3481d1d8c0?q=80&w=1920&auto=format&fit=crop",
+    twitter: "nftwizard",
+    instagram: "nft_wizard",
+    bio: "Creating magical digital collectibles inspired by fantasy and mythology.",
   },
   {
     id: "4",
@@ -57,6 +75,10 @@ export const mockCreators: Creator[] = [
     avatar: "https://api.dicebear.com/7.x/personas/svg?seed=DigitalDreamer",
     verified: true,
     totalSales: 423,
+    bannerImage: "https://images.unsplash.com/photo-1543857778-c4a1a3e0b2eb?q=80&w=1920&auto=format&fit=crop",
+    twitter: "digitaldreamer",
+    website: "https://digitaldreamer.art",
+    bio: "Dreams transformed into digital art. Exploring surrealism in the digital realm.",
   },
   {
     id: "5",
@@ -64,6 +86,9 @@ export const mockCreators: Creator[] = [
     avatar: "https://api.dicebear.com/7.x/personas/svg?seed=VirtualVanguard",
     verified: false,
     totalSales: 312,
+    bannerImage: "https://images.unsplash.com/photo-1655635949212-1d8f4f103ea1?q=80&w=1920&auto=format&fit=crop",
+    instagram: "virtual_vanguard",
+    bio: "Leading the way in virtual and augmented reality art experiences.",
   },
   {
     id: "6",
@@ -71,6 +96,10 @@ export const mockCreators: Creator[] = [
     avatar: "https://api.dicebear.com/7.x/personas/svg?seed=ArtificialArtisan",
     verified: true,
     totalSales: 254,
+    bannerImage: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1920&auto=format&fit=crop",
+    twitter: "aiartisan",
+    website: "https://artificialartisan.com",
+    bio: "Blending AI and human creativity to create unique digital masterpieces.",
   },
 ];
 

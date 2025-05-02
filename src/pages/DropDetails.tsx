@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
@@ -221,14 +220,14 @@ const DropDetails = () => {
               {/* Title & Creator */}
               <h1 className="text-2xl font-bold mb-2">{drop.title}</h1>
               <div className="flex items-center space-x-2 mb-6">
-                <Link to={`/creator/${drop.creator.username}`}>
+                <Link to={`/creator/${drop.creator.name.toLowerCase().replace(/\s+/g, '')}`}>
                   <img 
                     src={drop.creator.avatar} 
                     alt={drop.creator.name} 
                     className="w-6 h-6 rounded-full"
                   />
                 </Link>
-                <Link to={`/creator/${drop.creator.username}`} className="text-gray-700 hover:underline">
+                <Link to={`/creator/${drop.creator.name.toLowerCase().replace(/\s+/g, '')}`} className="text-gray-700 hover:underline">
                   by {drop.creator.name}
                 </Link>
                 {drop.creator.verified && (
