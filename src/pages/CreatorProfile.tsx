@@ -6,12 +6,12 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { mockNFTDrops, NFTCreator, NFTDrop } from "@/lib/mock-data";
+import { mockNFTDrops, Creator, NFTDrop } from "@/lib/mock-data";
 import DropCard from "@/components/DropCard";
 
 const CreatorProfile = () => {
   const { username } = useParams<{ username: string }>();
-  const [creator, setCreator] = useState<NFTCreator | null>(null);
+  const [creator, setCreator] = useState<Creator | null>(null);
   const [activeDrops, setActiveDrops] = useState<NFTDrop[]>([]);
   const [pastDrops, setPastDrops] = useState<NFTDrop[]>([]);
   
@@ -22,7 +22,7 @@ const CreatorProfile = () => {
       new Map(allCreators.map(item => [item.id, item])).values()
     );
     
-    const foundCreator = uniqueCreators.find(c => c.username === username);
+    const foundCreator = uniqueCreators.find(c => c.name.toLowerCase() === username?.toLowerCase());
     
     if (foundCreator) {
       setCreator(foundCreator);
@@ -88,7 +88,7 @@ const CreatorProfile = () => {
                   </span>
                 )}
               </div>
-              <p className="text-gray-500">@{creator.username}</p>
+              <p className="text-gray-500">@{creator.name.toLowerCase().replace(/\s+/g, '')}</p>
             </div>
             
             {/* Social Links */}
