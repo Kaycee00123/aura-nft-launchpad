@@ -68,21 +68,10 @@ const DropDetails = () => {
     setIsMinting(true);
     
     try {
-      // Simulate minting process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "NFT Minted!",
-        description: "Your transaction has been submitted successfully",
-      });
+      // Redirect to dedicated mint page instead of minting here
+      window.location.href = `/mint/${slug}`;
     } catch (error) {
-      console.error("Minting error:", error);
-      toast({
-        title: "Minting failed",
-        description: "There was an error during the minting process. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+      console.error("Navigation error:", error);
       setIsMinting(false);
     }
   };
@@ -232,12 +221,16 @@ const DropDetails = () => {
               {/* Title & Creator */}
               <h1 className="text-2xl font-bold mb-2">{drop.title}</h1>
               <div className="flex items-center space-x-2 mb-6">
-                <img 
-                  src={drop.creator.avatar} 
-                  alt={drop.creator.name} 
-                  className="w-6 h-6 rounded-full"
-                />
-                <span className="text-gray-700">by {drop.creator.name}</span>
+                <Link to={`/creator/${drop.creator.username}`}>
+                  <img 
+                    src={drop.creator.avatar} 
+                    alt={drop.creator.name} 
+                    className="w-6 h-6 rounded-full"
+                  />
+                </Link>
+                <Link to={`/creator/${drop.creator.username}`} className="text-gray-700 hover:underline">
+                  by {drop.creator.name}
+                </Link>
                 {drop.creator.verified && (
                   <svg
                     className="w-4 h-4 text-blue-500"
@@ -319,7 +312,7 @@ const DropDetails = () => {
                   disabled={isMinting}
                   className="w-full bg-aura-purple hover:bg-aura-purple-dark text-white py-6 text-lg mb-4"
                 >
-                  {isMinting ? "Minting..." : "Mint Now"}
+                  {isMinting ? "Redirecting..." : "Mint Now"}
                 </Button>
               ) : drop.status === "upcoming" ? (
                 <Button 
