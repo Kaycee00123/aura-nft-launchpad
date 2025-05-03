@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -196,7 +197,7 @@ const Mint = () => {
                           className="max-w-28"
                         />
                         <p className="text-sm text-muted-foreground">
-                          {(parseFloat(price) * quantity).toString()} {currency}
+                          {(parseFloat(drop.price) * quantity).toString()} {drop.currency}
                         </p>
                         <Button
                           type="button"

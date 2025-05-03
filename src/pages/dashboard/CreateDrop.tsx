@@ -13,7 +13,7 @@ import {
   SelectTrigger, 
   SelectValue
 } from "@/components/ui/select";
-import { Loader, Upload, ImageIcon } from "lucide-react";
+import { Loader, Upload, ImageIcon, FileCode } from "lucide-react";
 
 type DropFormData = {
   title: string;
@@ -27,6 +27,7 @@ type DropFormData = {
   mintEnd: string;
   bannerImage: File | null;
   displayImage: File | null;
+  contractImage: File | null;
 };
 
 const CreateDrop = () => {
@@ -35,6 +36,7 @@ const CreateDrop = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const displayImageInputRef = useRef<HTMLInputElement>(null);
+  const contractImageInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<DropFormData>({
     title: "",
@@ -48,10 +50,12 @@ const CreateDrop = () => {
     mintEnd: "",
     bannerImage: null,
     displayImage: null,
+    contractImage: null,
   });
 
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [displayImagePreview, setDisplayImagePreview] = useState<string | null>(null);
+  const [contractImagePreview, setContractImagePreview] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -91,7 +95,7 @@ const CreateDrop = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'bannerImage' | 'displayImage') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'bannerImage' | 'displayImage' | 'contractImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -105,8 +109,10 @@ const CreateDrop = () => {
     const previewUrl = URL.createObjectURL(file);
     if (fileType === 'bannerImage') {
       setBannerPreview(previewUrl);
-    } else {
+    } else if (fileType === 'displayImage') {
       setDisplayImagePreview(previewUrl);
+    } else if (fileType === 'contractImage') {
+      setContractImagePreview(previewUrl);
     }
   };
 
@@ -118,7 +124,7 @@ const CreateDrop = () => {
     e.preventDefault();
     
     // Validate form
-    if (!formData.title || !formData.description || !formData.displayImage || !formData.bannerImage || !formData.symbol) {
+    if (!formData.title || !formData.description || !formData.displayImage || !formData.bannerImage || !formData.symbol || !formData.contractImage) {
       toast({
         title: "Missing Fields",
         description: "Please fill in all required fields and upload required images",
@@ -411,6 +417,50 @@ const CreateDrop = () => {
                         <ImageIcon className="w-10 h-10 text-gray-400" />
                         <p className="text-sm text-gray-500">Click to upload display image</p>
                         <p className="text-xs text-gray-400">This is the main image shown during minting</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Contract Image Upload */}
+                <div>
+                  <label htmlFor="contractImage" className="block text-sm font-medium text-gray-700 mb-1">
+                    Contract Image *
+                  </label>
+                  <input
+                    ref={contractImageInputRef}
+                    type="file"
+                    id="contractImage"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'contractImage')}
+                    className="hidden"
+                  />
+                  {contractImagePreview ? (
+                    <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={contractImagePreview} 
+                        alt="Contract image preview"
+                        className="w-full h-64 object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute bottom-2 right-2"
+                        onClick={() => triggerFileInput(contractImageInputRef)}
+                      >
+                        Change Image
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => triggerFileInput(contractImageInputRef)}
+                    >
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <FileCode className="w-10 h-10 text-gray-400" />
+                        <p className="text-sm text-gray-500">Click to upload contract image</p>
+                        <p className="text-xs text-gray-400">This image will be linked to the contract address</p>
                       </div>
                     </div>
                   )}
