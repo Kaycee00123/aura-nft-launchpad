@@ -69,7 +69,7 @@ const Mint = () => {
       
       toast({
         title: "Mint Successful!",
-        description: `You have successfully minted ${quantity.toString()} NFT${quantity > 1 ? 's' : ''}.`,
+        description: `You have successfully minted ${quantity} NFT${quantity > 1 ? 's' : ''}.`,
       });
       
       // In a real app, we would update Supabase here
@@ -197,7 +197,7 @@ const Mint = () => {
                           className="max-w-28"
                         />
                         <p className="text-sm text-muted-foreground">
-                          {(parseFloat(drop.price) * quantity).toString()} {drop.currency}
+                          {(parseFloat(drop.price) * quantity).toFixed(4)} {drop.currency}
                         </p>
                         <Button
                           type="button"
@@ -214,7 +214,7 @@ const Mint = () => {
                     
                     <div className="flex justify-between py-4 border-t border-gray-200">
                       <span>Total Cost</span>
-                      <span className="font-semibold">{totalCost} {drop.currency}</span>
+                      <span className="font-semibold">{totalCost.toFixed(4)} {drop.currency}</span>
                     </div>
                     
                     <Button

@@ -1,7 +1,7 @@
 
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,7 @@ import {
   SelectTrigger, 
   SelectValue
 } from "@/components/ui/select";
-import { Loader, Upload, ImageIcon, FolderIcon } from "lucide-react";
+import { Loader, Upload, ImageIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { 
   Form,
@@ -227,7 +227,7 @@ const CreateCollection = () => {
                           <Input placeholder="ipfs://Qm..." {...field} />
                         </FormControl>
                         <FormDescription>
-                          The IPFS URI where your collection metadata is stored
+                          The IPFS URI where your collection metadata is stored. These images will be displayed during the minting process.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -265,7 +265,7 @@ const CreateCollection = () => {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Images</CardTitle>
+                  <CardTitle>Collection Images</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Banner Image Upload */}
@@ -273,6 +273,7 @@ const CreateCollection = () => {
                     <Label htmlFor="bannerImage" className="block text-sm font-medium text-gray-700 mb-1">
                       Banner Image *
                     </Label>
+                    <p className="text-xs text-gray-500 mb-2">This wide image appears at the top of your collection page</p>
                     <input
                       ref={bannerInputRef}
                       type="file"
@@ -315,8 +316,9 @@ const CreateCollection = () => {
                   {/* Display Image Upload */}
                   <div>
                     <Label htmlFor="displayImage" className="block text-sm font-medium text-gray-700 mb-1">
-                      Display Image *
+                      Collection Logo *
                     </Label>
+                    <p className="text-xs text-gray-500 mb-2">This is the main logo representing your NFT collection</p>
                     <input
                       ref={displayImageInputRef}
                       type="file"
@@ -349,8 +351,8 @@ const CreateCollection = () => {
                       >
                         <div className="flex flex-col items-center justify-center space-y-2">
                           <ImageIcon className="w-10 h-10 text-gray-400" />
-                          <p className="text-sm text-gray-500">Click to upload display image</p>
-                          <p className="text-xs text-gray-400">This is the main image shown for your collection</p>
+                          <p className="text-sm text-gray-500">Click to upload collection logo</p>
+                          <p className="text-xs text-gray-400">This will be shown in listings and marketplace</p>
                         </div>
                       </div>
                     )}

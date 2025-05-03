@@ -339,6 +339,7 @@ const CreateDrop = () => {
                   <label htmlFor="bannerImage" className="block text-sm font-medium text-gray-700 mb-1">
                     Banner Image *
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">This wide image will appear at the top of your drop page</p>
                   <input
                     ref={bannerInputRef}
                     type="file"
@@ -378,11 +379,12 @@ const CreateDrop = () => {
                   )}
                 </div>
                 
-                {/* Display Image Upload */}
+                {/* Display Image Upload (Drop Logo) */}
                 <div>
                   <label htmlFor="displayImage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Display Image *
+                    Drop Logo *
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">This is the main logo/icon representing your drop collection</p>
                   <input
                     ref={displayImageInputRef}
                     type="file"
@@ -415,18 +417,19 @@ const CreateDrop = () => {
                     >
                       <div className="flex flex-col items-center justify-center space-y-2">
                         <ImageIcon className="w-10 h-10 text-gray-400" />
-                        <p className="text-sm text-gray-500">Click to upload display image</p>
-                        <p className="text-xs text-gray-400">This is the main image shown during minting</p>
+                        <p className="text-sm text-gray-500">Click to upload drop logo</p>
+                        <p className="text-xs text-gray-400">This will be shown in listings and cards</p>
                       </div>
                     </div>
                   )}
                 </div>
                 
-                {/* Contract Image Upload */}
+                {/* Contract Image Upload (Mint Display) */}
                 <div>
                   <label htmlFor="contractImage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Contract Image *
+                    Mint Display Image *
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">This image will be displayed during the minting process</p>
                   <input
                     ref={contractImageInputRef}
                     type="file"
@@ -459,8 +462,8 @@ const CreateDrop = () => {
                     >
                       <div className="flex flex-col items-center justify-center space-y-2">
                         <FileCode className="w-10 h-10 text-gray-400" />
-                        <p className="text-sm text-gray-500">Click to upload contract image</p>
-                        <p className="text-xs text-gray-400">This image will be linked to the contract address</p>
+                        <p className="text-sm text-gray-500">Click to upload mint display image</p>
+                        <p className="text-xs text-gray-400">Users will see this image when minting</p>
                       </div>
                     </div>
                   )}
