@@ -17,6 +17,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import CreateDrop from "./pages/dashboard/CreateDrop";
 import MyDrops from "./pages/dashboard/MyDrops";
 import StatsPage from "./pages/dashboard/StatsPage";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/drop/:slug" element={<DropDetails />} />
             <Route path="/mint/:slug" element={<Mint />} />
             <Route path="/creator/:username" element={<CreatorProfile />} />
+            <Route path="/admin" element={<AdminPanel />} />
             
             {/* Dashboard Routes */}
             <Route path="/dashboard" element={<Dashboard />}>
