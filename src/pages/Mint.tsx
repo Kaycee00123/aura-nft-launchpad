@@ -98,6 +98,7 @@ const Mint = () => {
   const totalCost = parseFloat((quantity * parseFloat(drop.price)).toFixed(4));
   const isActive = drop.status === "active";
   const remainingSupply = drop.supply - drop.minted;
+  const availableSupply = Math.min(10, remainingSupply);
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -186,13 +187,17 @@ const Mint = () => {
                           -
                         </Button>
                         <Input
+                          id="quantity"
                           type="number"
                           min="1"
-                          max="10"
+                          max={availableSupply}
                           value={quantity}
-                          onChange={handleQuantityChange}
-                          className="mx-2 text-center"
+                          onChange={(e) => setQuantity(parseInt(e.target.value))}
+                          className="max-w-28"
                         />
+                        <p className="text-sm text-muted-foreground">
+                          {(parseFloat(price) * quantity).toString()} {currency}
+                        </p>
                         <Button
                           type="button"
                           variant="outline"

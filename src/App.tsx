@@ -15,6 +15,7 @@ import Mint from "./pages/Mint";
 import CreatorProfile from "./pages/CreatorProfile";
 import Dashboard from "./pages/dashboard/Dashboard";
 import CreateDrop from "./pages/dashboard/CreateDrop";
+import CreateCollection from "./pages/dashboard/CreateCollection";
 import MyDrops from "./pages/dashboard/MyDrops";
 import StatsPage from "./pages/dashboard/StatsPage";
 import AdminPanel from "./pages/AdminPanel";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />}>
               <Route index element={<StatsPage />} />
               <Route path="create" element={<CreateDrop />} />
+              <Route path="collection/create" element={<CreateCollection />} />
               <Route path="drops" element={<MyDrops />} />
               <Route path="stats" element={<StatsPage />} />
             </Route>

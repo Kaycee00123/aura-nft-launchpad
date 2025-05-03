@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Plus, LayoutDashboard, Image, ChartBar, Settings, Menu, X } from "lucide-react";
+import { Plus, LayoutDashboard, Image, ChartBar, Settings, Menu, X, FolderPlus } from "lucide-react";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -45,6 +44,11 @@ const Dashboard = () => {
       name: "Create Drop",
       path: "/dashboard/create",
       icon: <Plus className="h-5 w-5" />,
+    },
+    {
+      name: "Create Collection",
+      path: "/dashboard/collection/create",
+      icon: <FolderPlus className="h-5 w-5" />,
     },
     {
       name: "My Drops",

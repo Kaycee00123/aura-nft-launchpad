@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -13,37 +13,45 @@ import {
   SelectTrigger, 
   SelectValue
 } from "@/components/ui/select";
-import { Loader } from "lucide-react";
+import { Loader, Upload, ImageIcon } from "lucide-react";
 
 type DropFormData = {
   title: string;
   description: string;
+  symbol: string;
   blockchain: string;
   supply: number;
   price: string;
   currency: string;
   mintStart: string;
   mintEnd: string;
-  bannerImage: string;
-  images: string[];
+  bannerImage: File | null;
+  displayImage: File | null;
 };
 
 const CreateDrop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const displayImageInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState<DropFormData>({
     title: "",
     description: "",
+    symbol: "",
     blockchain: "Ethereum",
     supply: 1000,
     price: "0.05",
     currency: "ETH",
     mintStart: "",
     mintEnd: "",
-    bannerImage: "",
-    images: ["", "", ""],
+    bannerImage: null,
+    displayImage: null,
   });
+
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [displayImagePreview, setDisplayImagePreview] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -83,24 +91,37 @@ const CreateDrop = () => {
     }
   };
 
-  const handleImageChange = (index: number, value: string) => {
-    const newImages = [...formData.images];
-    newImages[index] = value;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'bannerImage' | 'displayImage') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     
+    // Update form data with the file
     setFormData(prev => ({
       ...prev,
-      images: newImages,
+      [fileType]: file,
     }));
+    
+    // Create and set preview URL
+    const previewUrl = URL.createObjectURL(file);
+    if (fileType === 'bannerImage') {
+      setBannerPreview(previewUrl);
+    } else {
+      setDisplayImagePreview(previewUrl);
+    }
+  };
+
+  const triggerFileInput = (inputRef: React.RefObject<HTMLInputElement>) => {
+    inputRef.current?.click();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
-    if (!formData.title || !formData.description || !formData.bannerImage) {
+    if (!formData.title || !formData.description || !formData.displayImage || !formData.bannerImage || !formData.symbol) {
       toast({
         title: "Missing Fields",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields and upload required images",
         variant: "destructive",
       });
       return;
@@ -161,6 +182,22 @@ const CreateDrop = () => {
                 </div>
                 
                 <div>
+                  <label htmlFor="symbol" className="block text-sm font-medium text-gray-700 mb-1">
+                    Symbol *
+                  </label>
+                  <Input
+                    id="symbol"
+                    name="symbol"
+                    placeholder="NFTC"
+                    value={formData.symbol}
+                    onChange={handleInputChange}
+                    maxLength={8}
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Symbol used for the token (e.g. BAYC, AZUKI)</p>
+                </div>
+                
+                <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
                     Description *
                   </label>
@@ -168,7 +205,7 @@ const CreateDrop = () => {
                     id="description"
                     name="description"
                     placeholder="Describe your NFT collection..."
-                    rows={5}
+                    rows={4}
                     value={formData.description}
                     onChange={handleInputChange}
                     required
@@ -290,72 +327,94 @@ const CreateDrop = () => {
               <CardHeader>
                 <CardTitle>Images</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Banner Image Upload */}
                 <div>
                   <label htmlFor="bannerImage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Banner Image URL *
+                    Banner Image *
                   </label>
-                  <Input
+                  <input
+                    ref={bannerInputRef}
+                    type="file"
                     id="bannerImage"
-                    name="bannerImage"
-                    placeholder="https://example.com/image.jpg"
-                    value={formData.bannerImage}
-                    onChange={handleInputChange}
-                    required
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'bannerImage')}
+                    className="hidden"
                   />
-                  {formData.bannerImage && (
-                    <div className="mt-2 rounded-md overflow-hidden h-40">
-                      <img
-                        src={formData.bannerImage}
+                  {bannerPreview ? (
+                    <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={bannerPreview} 
                         alt="Banner preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x150?text=Invalid+Image+URL";
-                        }}
+                        className="w-full h-40 object-cover"
                       />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute bottom-2 right-2"
+                        onClick={() => triggerFileInput(bannerInputRef)}
+                      >
+                        Change Image
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => triggerFileInput(bannerInputRef)}
+                    >
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <Upload className="w-10 h-10 text-gray-400" />
+                        <p className="text-sm text-gray-500">Click to upload banner image</p>
+                        <p className="text-xs text-gray-400">Recommended size: 1400 x 400px</p>
+                      </div>
                     </div>
                   )}
                 </div>
                 
+                {/* Display Image Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Gallery Images (Up to 3)
+                  <label htmlFor="displayImage" className="block text-sm font-medium text-gray-700 mb-1">
+                    Display Image *
                   </label>
-                  <div className="space-y-3">
-                    {formData.images.map((image, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          placeholder={`Image URL ${index + 1}`}
-                          value={image}
-                          onChange={(e) => handleImageChange(index, e.target.value)}
-                        />
-                        {image && (
-                          <div className="w-12 h-12 flex-shrink-0 rounded-md overflow-hidden">
-                            <img
-                              src={image}
-                              alt={`Gallery preview ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = "https://via.placeholder.com/100?text=Error";
-                              }}
-                            />
-                          </div>
-                        )}
+                  <input
+                    ref={displayImageInputRef}
+                    type="file"
+                    id="displayImage"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'displayImage')}
+                    className="hidden"
+                  />
+                  {displayImagePreview ? (
+                    <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={displayImagePreview} 
+                        alt="Display image preview"
+                        className="w-full h-64 object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute bottom-2 right-2"
+                        onClick={() => triggerFileInput(displayImageInputRef)}
+                      >
+                        Change Image
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => triggerFileInput(displayImageInputRef)}
+                    >
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <ImageIcon className="w-10 h-10 text-gray-400" />
+                        <p className="text-sm text-gray-500">Click to upload display image</p>
+                        <p className="text-xs text-gray-400">This is the main image shown during minting</p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Traits</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500 mb-4">
-                  Traits will be available in the full version. This is currently a simplified form.
-                </p>
               </CardContent>
             </Card>
             
