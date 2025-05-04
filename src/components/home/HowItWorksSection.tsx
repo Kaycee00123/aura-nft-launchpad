@@ -64,7 +64,7 @@ const HowItWorksSection = () => {
         </div>
 
         <div className="text-center">
-          <Link to="/create">
+          <Link to="/dashboard/create">
             <Button className="bg-aura-purple hover:bg-aura-purple-dark text-white px-8 py-6 text-lg rounded-lg">
               Start Creating
               <ArrowRight className="ml-2 h-5 w-5" />
