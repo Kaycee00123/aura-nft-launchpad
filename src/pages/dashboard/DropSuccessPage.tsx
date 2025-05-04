@@ -4,30 +4,45 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink } from "lucide-react";
+import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, ImageIcon } from "lucide-react";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+
+interface DropDetails {
+  contractAddress: string;
+  logoUri?: string;
+  bannerUri?: string;
+}
 
 const DropSuccessPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const [contractAddress, setContractAddress] = useState<string>("");
+  const [dropDetails, setDropDetails] = useState<DropDetails>({
+    contractAddress: "",
+  });
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Get contract address from URL query param
+    // Get parameters from URL query params
     const params = new URLSearchParams(location.search);
     const address = params.get("address");
+    const logoUri = params.get("logoUri") || "";
+    const bannerUri = params.get("bannerUri") || "";
     
     if (!address) {
       navigate("/dashboard/create");
       return;
     }
     
-    setContractAddress(address);
+    setDropDetails({
+      contractAddress: address,
+      logoUri: logoUri || undefined,
+      bannerUri: bannerUri || undefined,
+    });
   }, [location.search, navigate]);
 
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText(contractAddress);
+    navigator.clipboard.writeText(dropDetails.contractAddress);
     setCopied(true);
     
     toast({
@@ -47,8 +62,7 @@ const DropSuccessPage = () => {
 
   const handleViewDrop = () => {
     // In a real app, we would navigate to the drop details page
-    // For now, we'll simulate this by navigating to a placeholder URL
-    navigate(`/drop/new-drop-${contractAddress.substring(0, 6)}`);
+    navigate(`/drop/new-drop-${dropDetails.contractAddress.substring(0, 6)}`);
   };
 
   return (
@@ -65,11 +79,54 @@ const DropSuccessPage = () => {
             Your NFT drop has been successfully deployed to the blockchain.
           </p>
           
+          {/* Display collection branding if available */}
+          {(dropDetails.logoUri || dropDetails.bannerUri) && (
+            <div className="space-y-4">
+              {dropDetails.bannerUri && (
+                <div className="rounded-lg overflow-hidden">
+                  <AspectRatio ratio={3/1}>
+                    <div className="w-full h-full bg-gray-100 relative">
+                      {dropDetails.bannerUri.startsWith("ipfs://") ? (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-sm text-gray-500">Banner stored at: {dropDetails.bannerUri}</p>
+                        </div>
+                      ) : (
+                        <img 
+                          src={dropDetails.bannerUri} 
+                          alt="Collection Banner"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </AspectRatio>
+                </div>
+              )}
+              
+              {dropDetails.logoUri && (
+                <div className="flex justify-center">
+                  <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md bg-white">
+                    {dropDetails.logoUri.startsWith("ipfs://") ? (
+                      <div className="flex items-center justify-center h-full bg-gray-100">
+                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                      </div>
+                    ) : (
+                      <img 
+                        src={dropDetails.logoUri} 
+                        alt="Collection Logo"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-500 mb-2">Contract Address</p>
             <div className="flex items-center justify-between gap-2">
               <code className="bg-gray-100 px-3 py-2 rounded text-sm flex-1 text-left overflow-x-auto">
-                {contractAddress}
+                {dropDetails.contractAddress}
               </code>
               <Button
                 variant="outline"
@@ -92,6 +149,29 @@ const DropSuccessPage = () => {
             </div>
           </div>
           
+          {/* Display image URIs if available */}
+          {(dropDetails.logoUri || dropDetails.bannerUri) && (
+            <div className="bg-gray-50 p-4 rounded-lg text-left space-y-2">
+              {dropDetails.logoUri && (
+                <div>
+                  <p className="text-sm text-gray-500">Logo URI</p>
+                  <code className="bg-gray-100 px-3 py-1 rounded text-xs block overflow-x-auto">
+                    {dropDetails.logoUri}
+                  </code>
+                </div>
+              )}
+              
+              {dropDetails.bannerUri && (
+                <div>
+                  <p className="text-sm text-gray-500">Banner URI</p>
+                  <code className="bg-gray-100 px-3 py-1 rounded text-xs block overflow-x-auto">
+                    {dropDetails.bannerUri}
+                  </code>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="flex flex-col gap-3 pt-2">
             <Button 
               onClick={handleViewDrop}
@@ -111,7 +191,7 @@ const DropSuccessPage = () => {
             </Button>
             
             <a 
-              href={`https://etherscan.io/address/${contractAddress}`}
+              href={`https://etherscan.io/address/${dropDetails.contractAddress}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-500 hover:text-aura-purple flex items-center justify-center gap-1 mt-2"

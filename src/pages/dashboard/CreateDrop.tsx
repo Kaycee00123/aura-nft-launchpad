@@ -19,7 +19,20 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader, Upload, ImageIcon, Info } from "lucide-react";
+import { Loader, Upload, ImageIcon, Info, Image as ImageIcon2, FileImage } from "lucide-react";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+
+// Define max file size (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Define allowed image mime types
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg", 
+  "image/jpg", 
+  "image/png", 
+  "image/webp", 
+  "image/gif"
+];
 
 // Define form schema with validation
 const dropFormSchema = z.object({
@@ -35,6 +48,22 @@ const dropFormSchema = z.object({
   enableSoulbound: z.boolean().default(false),
   enableBurn: z.boolean().default(false),
   singleDropImage: z.instanceof(File).optional(),
+  logoImage: z
+    .instanceof(File)
+    .refine(file => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      file => ACCEPTED_IMAGE_TYPES.includes(file.type),
+      "Only .jpg, .jpeg, .png, .webp, and .gif formats are supported."
+    )
+    .optional(),
+  bannerImage: z
+    .instanceof(File)
+    .refine(file => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      file => ACCEPTED_IMAGE_TYPES.includes(file.type),
+      "Only .jpg, .jpeg, .png, .webp, and .gif formats are supported."
+    )
+    .optional(),
 })
 .refine((data) => {
   // If dropType is "single", singleDropImage is required
@@ -64,8 +93,19 @@ const CreateDrop = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // File input refs
   const singleDropImageRef = useRef<HTMLInputElement>(null);
+  const logoImageRef = useRef<HTMLInputElement>(null);
+  const bannerImageRef = useRef<HTMLInputElement>(null);
+  
+  // Image preview states
   const [singleImagePreview, setSingleImagePreview] = useState<string | null>(null);
+  const [logoImagePreview, setLogoImagePreview] = useState<string | null>(null);
+  const [bannerImagePreview, setBannerImagePreview] = useState<string | null>(null);
+  
+  // Upload status states
+  const [logoUploadStatus, setLogoUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [bannerUploadStatus, setBannerUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
 
   // Initialize form
   const form = useForm<DropFormValues>({
@@ -88,20 +128,76 @@ const CreateDrop = () => {
   // Watch the dropType to conditionally render form fields
   const dropType = form.watch("dropType");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Generic file handling function
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>, 
+    fieldName: 'singleDropImage' | 'logoImage' | 'bannerImage',
+    setPreview: (url: string | null) => void
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     // Create and set preview URL
     const previewUrl = URL.createObjectURL(file);
-    setSingleImagePreview(previewUrl);
-    form.setValue("singleDropImage", file);
+    setPreview(previewUrl);
+    form.setValue(fieldName, file);
   };
 
-  const triggerFileInput = useCallback(() => {
-    singleDropImageRef.current?.click();
+  // Specific handlers for each file input
+  const handleSingleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileChange(e, 'singleDropImage', setSingleImagePreview);
+  };
+
+  const handleLogoImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileChange(e, 'logoImage', setLogoImagePreview);
+    validateImageDimensions(e.target.files?.[0], 'logo');
+  };
+
+  const handleBannerImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileChange(e, 'bannerImage', setBannerImagePreview);
+    validateImageDimensions(e.target.files?.[0], 'banner');
+  };
+
+  // Validate image dimensions
+  const validateImageDimensions = (file: File | undefined, type: 'logo' | 'banner') => {
+    if (!file) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      const { width, height } = img;
+      
+      if (type === 'logo') {
+        // Logo should be square-ish (aspect ratio between 0.8 and 1.2)
+        const aspectRatio = width / height;
+        if (aspectRatio < 0.8 || aspectRatio > 1.2) {
+          toast({
+            title: "Logo Image Warning",
+            description: "Logo should have a square aspect ratio for best results",
+            variant: "warning",
+          });
+        }
+      } else if (type === 'banner') {
+        // Banner should be wide (aspect ratio around 3:1)
+        const aspectRatio = width / height;
+        if (aspectRatio < 2 || aspectRatio > 4) {
+          toast({
+            title: "Banner Image Warning",
+            description: "Banner should have a wide aspect ratio (around 3:1) for best results",
+            variant: "warning",
+          });
+        }
+      }
+    };
+    
+    img.src = URL.createObjectURL(file);
+  };
+
+  // Trigger file input clicks
+  const triggerFileInput = useCallback((ref: React.RefObject<HTMLInputElement>) => {
+    ref.current?.click();
   }, []);
 
+  // Upload file to IPFS
   const uploadToIPFS = async (file: File): Promise<string> => {
     // Simulate IPFS upload
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -111,6 +207,7 @@ const CreateDrop = () => {
     return `ipfs://${mockCid}`;
   };
 
+  // Generate metadata for single drop
   const generateMetadataForSingleDrop = async (image: string): Promise<string> => {
     // Simulate metadata creation and upload
     const metadata = {
@@ -126,11 +223,49 @@ const CreateDrop = () => {
     return `ipfs://${mockMetadataCid}`;
   };
 
+  // Form submission handler
   const onSubmit = async (values: DropFormValues) => {
     setIsSubmitting(true);
     let baseUriToUse = "";
+    let logoUri = "";
+    let bannerUri = "";
 
     try {
+      // Upload logo if provided
+      if (values.logoImage) {
+        setLogoUploadStatus('uploading');
+        toast({
+          title: "Uploading logo...",
+          description: "Please wait while we upload your logo to IPFS.",
+        });
+        
+        logoUri = await uploadToIPFS(values.logoImage);
+        setLogoUploadStatus('success');
+        
+        toast({
+          title: "Logo uploaded successfully",
+          description: "Your logo has been uploaded to IPFS.",
+        });
+      }
+      
+      // Upload banner if provided
+      if (values.bannerImage) {
+        setBannerUploadStatus('uploading');
+        toast({
+          title: "Uploading banner...",
+          description: "Please wait while we upload your banner to IPFS.",
+        });
+        
+        bannerUri = await uploadToIPFS(values.bannerImage);
+        setBannerUploadStatus('success');
+        
+        toast({
+          title: "Banner uploaded successfully",
+          description: "Your banner has been uploaded to IPFS.",
+        });
+      }
+      
+      // Handle single drop type
       if (values.dropType === "single") {
         if (!values.singleDropImage) {
           toast({
@@ -187,8 +322,8 @@ const CreateDrop = () => {
         description: "Your NFT drop has been deployed to the blockchain.",
       });
       
-      // Navigate to success page with contract address
-      navigate(`/dashboard/drops/success?address=${contractAddress}`);
+      // Navigate to success page with contract address and image URIs
+      navigate(`/dashboard/drops/success?address=${contractAddress}&logoUri=${encodeURIComponent(logoUri)}&bannerUri=${encodeURIComponent(bannerUri)}`);
     } catch (error) {
       console.error("Error creating drop:", error);
       toast({
@@ -196,6 +331,14 @@ const CreateDrop = () => {
         description: "Failed to create drop. Please try again.",
         variant: "destructive",
       });
+      
+      // Set error status if any uploads failed
+      if (logoUri === "" && form.getValues("logoImage")) {
+        setLogoUploadStatus('error');
+      }
+      if (bannerUri === "" && form.getValues("bannerImage")) {
+        setBannerUploadStatus('error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -310,6 +453,121 @@ const CreateDrop = () => {
                       )}
                     />
                   )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Collection Branding</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Logo Image Upload */}
+                  <div>
+                    <FormLabel htmlFor="logoImage" className="block text-sm font-medium mb-1">
+                      Logo Image
+                    </FormLabel>
+                    <FormDescription className="mb-2">
+                      Square logo for your collection (recommended: 500×500px)
+                    </FormDescription>
+                    <input
+                      ref={logoImageRef}
+                      type="file"
+                      id="logoImage"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleLogoImageChange}
+                      className="hidden"
+                    />
+                    {logoImagePreview ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                        <AspectRatio ratio={1/1} className="w-full max-w-[200px] bg-gray-100">
+                          <img 
+                            src={logoImagePreview} 
+                            alt="Logo preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </AspectRatio>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => triggerFileInput(logoImageRef)}
+                        >
+                          Change Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors max-w-[200px]"
+                        onClick={() => triggerFileInput(logoImageRef)}
+                      >
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <ImageIcon2 className="w-8 h-8 text-gray-400" />
+                          <p className="text-sm text-gray-500">Upload Logo</p>
+                          <p className="text-xs text-gray-400">Square format recommended</p>
+                        </div>
+                      </div>
+                    )}
+                    {form.formState.errors.logoImage && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {form.formState.errors.logoImage.message}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Banner Image Upload */}
+                  <div>
+                    <FormLabel htmlFor="bannerImage" className="block text-sm font-medium mb-1">
+                      Banner Image
+                    </FormLabel>
+                    <FormDescription className="mb-2">
+                      Wide banner for your collection (recommended: 1500×500px)
+                    </FormDescription>
+                    <input
+                      ref={bannerImageRef}
+                      type="file"
+                      id="bannerImage"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleBannerImageChange}
+                      className="hidden"
+                    />
+                    {bannerImagePreview ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                        <AspectRatio ratio={3/1} className="w-full max-w-[600px] bg-gray-100">
+                          <img 
+                            src={bannerImagePreview} 
+                            alt="Banner preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </AspectRatio>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => triggerFileInput(bannerImageRef)}
+                        >
+                          Change Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors max-w-[600px]"
+                        onClick={() => triggerFileInput(bannerImageRef)}
+                      >
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <FileImage className="w-8 h-8 text-gray-400" />
+                          <p className="text-sm text-gray-500">Upload Banner</p>
+                          <p className="text-xs text-gray-400">Wide format recommended (3:1)</p>
+                        </div>
+                      </div>
+                    )}
+                    {form.formState.errors.bannerImage && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {form.formState.errors.bannerImage.message}
+                      </p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
               
@@ -495,8 +753,8 @@ const CreateDrop = () => {
                         ref={singleDropImageRef}
                         type="file"
                         id="singleDropImage"
-                        accept="image/jpeg,image/png,image/gif"
-                        onChange={handleFileChange}
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handleSingleImageChange}
                         className="hidden"
                       />
                       {singleImagePreview ? (
@@ -511,7 +769,7 @@ const CreateDrop = () => {
                             variant="secondary"
                             size="sm"
                             className="absolute bottom-2 right-2"
-                            onClick={triggerFileInput}
+                            onClick={() => triggerFileInput(singleDropImageRef)}
                           >
                             Change Image
                           </Button>
@@ -519,12 +777,12 @@ const CreateDrop = () => {
                       ) : (
                         <div 
                           className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={triggerFileInput}
+                          onClick={() => triggerFileInput(singleDropImageRef)}
                         >
                           <div className="flex flex-col items-center justify-center space-y-2">
                             <Upload className="w-10 h-10 text-gray-400" />
                             <p className="text-sm text-gray-500">Click to upload NFT image</p>
-                            <p className="text-xs text-gray-400">Supported formats: JPG, PNG, GIF</p>
+                            <p className="text-xs text-gray-400">Supported formats: JPG, PNG, GIF, WebP</p>
                           </div>
                         </div>
                       )}
