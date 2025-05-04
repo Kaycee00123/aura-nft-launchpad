@@ -15,11 +15,11 @@ const abstractMainnet = {
     symbol: 'ABS',
   },
   rpcUrls: {
-    public: { http: ['https://rpc.abstract.network'] },
-    default: { http: ['https://rpc.abstract.network'] },
+    public: { http: ['https://api.mainnet.abs.xyz'] },
+    default: { http: ['https://api.mainnet.abs.xyz'] },
   },
   blockExplorers: {
-    default: { name: 'Abstract Explorer', url: 'https://explorer.abstract.network' },
+    default: { name: 'Abstract Explorer', url: 'https://abscan.org/' },
   },
 }
 
@@ -33,11 +33,11 @@ const abstractTestnet = {
     symbol: 'ABS',
   },
   rpcUrls: {
-    public: { http: ['https://testnet-rpc.abstract.network'] },
-    default: { http: ['https://testnet-rpc.abstract.network'] },
+    public: { http: ['https://api.testnet.abs.xyz'] },
+    default: { http: ['https://api.testnet.abs.xyz'] },
   },
   blockExplorers: {
-    default: { name: 'Abstract Testnet Explorer', url: 'https://testnet.explorer.abstract.network' },
+    default: { name: 'Abstract Testnet Explorer', url: 'https://sepolia.abscan.org/' },
   },
 }
 
@@ -55,7 +55,7 @@ const monadTestnet = {
     default: { http: ['https://rpc.testnet.monad.xyz/'] },
   },
   blockExplorers: {
-    default: { name: 'Monad Explorer', url: 'https://explorer.testnet.monad.xyz' },
+    default: { name: 'Monad Explorer', url: 'https://testnet.monadexplorer.com/' },
   },
 }
 
@@ -91,7 +91,7 @@ export const supportedChains = [
 
 // This is a placeholder - replace with your actual project ID from WalletConnect Cloud
 // Get one at https://cloud.walletconnect.com/
-const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
+const projectId = '6f7da8ecb5707a7c8340093786426533';
 
 // Create wagmi config
 export const config = createConfig({
