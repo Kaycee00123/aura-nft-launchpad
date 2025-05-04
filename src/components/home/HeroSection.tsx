@@ -26,7 +26,7 @@ const HeroSection = () => {
               Create, mint, and sell your digital collectibles on the most user-friendly NFT launchpad platform. No coding required.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/create">
+              <Link to="/dashboard/create">
                 <Button size="lg" className="bg-aura-purple hover:bg-aura-purple-dark text-white px-6 py-6 text-lg">
                   Launch a Collection
                   <ArrowRight className="ml-2 h-5 w-5" />
