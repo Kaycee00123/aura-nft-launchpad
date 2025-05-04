@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { initialWalletState, WalletState, connectWallet } from "@/lib/wallet-utils";
+import { useWallet } from "./WalletContext";
 
 type User = {
   id: string;
@@ -9,7 +9,7 @@ type User = {
   email: string;
   isAdmin: boolean;
   isCreator: boolean;
-  wallet?: WalletState;
+  walletAddress?: string;
 };
 
 type AuthContextType = {
@@ -27,6 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { connectWallet, disconnectWallet, wallet } = useWallet();
 
   // Check for existing session on mount
   useEffect(() => {
@@ -42,6 +43,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  // Update user when wallet changes
+  useEffect(() => {
+    if (user && wallet.address) {
+      const updatedUser = { ...user, walletAddress: wallet.address };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  }, [wallet.address, user]);
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -55,7 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username: "Admin",
           email: "admin@aura.com",
           isAdmin: true,
-          isCreator: false
+          isCreator: false,
+          walletAddress: wallet.address
         };
         
         setUser(adminUser);
@@ -70,7 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username: "Creator",
           email: "creator@aura.com",
           isAdmin: false,
-          isCreator: true
+          isCreator: true,
+          walletAddress: wallet.address
         };
         
         setUser(creatorUser);
@@ -85,7 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username: "User",
           email: "user@aura.com",
           isAdmin: false,
-          isCreator: false
+          isCreator: false,
+          walletAddress: wallet.address
         };
         
         setUser(regularUser);
@@ -126,10 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       setIsLoading(true);
       try {
-        const walletState = await connectWallet();
-        const updatedUser = { ...user, wallet: walletState };
-        setUser(updatedUser);
-        localStorage.setItem("user", JSON.stringify(updatedUser));
+        await connectWallet();
+        // The wallet address will be updated via the useEffect that watches wallet.address
       } catch (error) {
         console.error("Error connecting wallet:", error);
         toast({
@@ -145,19 +156,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
         title: "Authentication Required",
         description: "Please log in before connecting your wallet.",
-      });
-    }
-  };
-
-  const disconnectWallet = () => {
-    if (user && user.wallet) {
-      const updatedUser = { ...user };
-      delete updatedUser.wallet;
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      toast({
-        title: "Wallet Disconnected",
-        description: "Your wallet has been disconnected.",
       });
     }
   };

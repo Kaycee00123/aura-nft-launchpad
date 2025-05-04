@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/context/WalletContext";
-import { shortenAddress } from "@/lib/wallet-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +15,11 @@ import { useToast } from "@/hooks/use-toast";
 interface WalletButtonProps {
   variant?: "default" | "outline" | "ghost";
 }
+
+const shortenAddress = (address: string | undefined): string => {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
 
 export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" }) => {
   const { wallet, isConnected, connectWallet, disconnectWallet } = useWallet();
@@ -34,8 +38,8 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
   };
 
   const openBlockExplorer = () => {
-    if (wallet.address && wallet.chain?.explorerUrl) {
-      window.open(`${wallet.chain.explorerUrl}/address/${wallet.address}`, "_blank");
+    if (wallet.address && wallet.chain?.blockExplorers?.default?.url) {
+      window.open(`${wallet.chain.blockExplorers.default.url}/address/${wallet.address}`, "_blank");
       setIsOpen(false);
     }
   };
@@ -75,7 +79,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
           <p className="font-medium">{wallet.chain?.name || "Unknown Network"}</p>
           {wallet.balance && (
             <p className="mt-1 font-mono text-sm">
-              {parseFloat(wallet.balance).toFixed(4)} {wallet.chain?.currency || "ETH"}
+              {parseFloat(wallet.balance).toFixed(4)} {wallet.chain?.nativeCurrency?.symbol || "ETH"}
             </p>
           )}
         </div>
@@ -83,7 +87,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
         <DropdownMenuItem onClick={copyAddressToClipboard}>
           <Copy className="h-4 w-4 mr-2" /> Copy Address
         </DropdownMenuItem>
-        {wallet.chain?.explorerUrl && (
+        {wallet.chain?.blockExplorers?.default?.url && (
           <DropdownMenuItem onClick={openBlockExplorer}>
             <ExternalLink className="h-4 w-4 mr-2" /> View on Explorer
           </DropdownMenuItem>

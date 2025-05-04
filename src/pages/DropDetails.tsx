@@ -19,7 +19,11 @@ import {
   Calendar
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { shortenAddress } from "@/lib/wallet-utils";
+
+const shortenAddress = (address: string | undefined): string => {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
 
 const DropDetails = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -39,7 +43,7 @@ const DropDetails = () => {
       setDrop(foundDrop);
       setSelectedImage(foundDrop.bannerImage);
       
-      // Check if current user is the creator (based on wallet connection)
+      // Check if current user is the creator
       if (isConnected && wallet?.address) {
         // This would be a real blockchain check in a production app
         // For now, we'll simulate it with a mock check
@@ -147,9 +151,9 @@ const DropDetails = () => {
   
   // Additional properties for the drop (mock data)
   const dropSymbol = drop.title.split(' ').map(word => word[0]).join('').toUpperCase();
-  const isSoulbound = Math.random() > 0.7; // Random for demo purposes
-  const isWhitelistEnabled = Math.random() > 0.5; // Random for demo purposes
-  const contractAddress = "0x" + Math.random().toString(16).slice(2, 42); // Random for demo purposes
+  const isSoulbound = Math.random() > 0.7; 
+  const isWhitelistEnabled = Math.random() > 0.5; 
+  const contractAddress = "0x" + Math.random().toString(16).slice(2, 42); 
   
   return (
     <div className="min-h-screen flex flex-col bg-white">

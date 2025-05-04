@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ interface NFTDrop {
 }
 
 const Mint = () => {
-  const { address } = useParams<{ address: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { wallet, isConnected, connectWallet } = useWallet();
@@ -51,7 +50,7 @@ const Mint = () => {
         isSoulbound: false,
         isWhitelistEnabled: false,
         creator: "0x1234567890abcdef1234567890abcdef12345678",
-        contractAddress: address || "0x"
+        contractAddress: slug || "0x"
       };
       
       setDrop(mockDrop);
@@ -69,7 +68,7 @@ const Mint = () => {
   
   useEffect(() => {
     fetchDropDetails();
-  }, [address]);
+  }, [slug]);
   
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
