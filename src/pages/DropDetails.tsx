@@ -23,7 +23,7 @@ import { shortenAddress } from "@/lib/wallet-utils";
 
 const DropDetails = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { wallet, isConnected, connectUserWallet } = useWallet();
+  const { wallet, isConnected, connectWallet } = useWallet();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [drop, setDrop] = useState<NFTDrop | null>(null);
@@ -411,7 +411,7 @@ const DropDetails = () => {
               {/* Mint Button */}
               {!isConnected ? (
                 <Button 
-                  onClick={connectUserWallet}
+                  onClick={connectWallet}
                   className="w-full bg-aura-purple hover:bg-aura-purple-dark text-white py-6 text-lg mb-4"
                 >
                   <Wallet className="mr-2 h-5 w-5" />

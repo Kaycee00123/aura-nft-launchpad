@@ -22,6 +22,7 @@ type WalletContextType = {
   disconnectWallet: () => void;
   switchToChain: (chainId: number) => Promise<boolean>;
   supportedChains: Chain[];
+  connectUserWallet: () => Promise<void>; // Add this function to match what's used in DropDetails
 };
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -175,6 +176,9 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // Add connectUserWallet as alias for connectWallet to match DropDetails usage
+  const connectUserWallet = connectWallet;
+
   const disconnectWallet = () => {
     setWallet(initialWalletState);
     localStorage.removeItem("wallet_connected");
@@ -225,6 +229,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         disconnectWallet,
         switchToChain,
         supportedChains: SUPPORTED_CHAINS,
+        connectUserWallet,
       }}
     >
       {children}

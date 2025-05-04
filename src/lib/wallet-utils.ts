@@ -156,6 +156,43 @@ export const getWalletBalance = async (provider: ethers.providers.Web3Provider, 
   }
 };
 
+// Add the missing connectWallet function
+export const connectWallet = async (): Promise<WalletState> => {
+  try {
+    // Check if ethereum is available
+    if (typeof window !== 'undefined' && window.ethereum) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      
+      // Request accounts
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts.length === 0) {
+        throw new Error("No accounts returned");
+      }
+      
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      const chainId = (await provider.getNetwork()).chainId;
+      const balance = await getWalletBalance(provider, address);
+      const chain = getChainById(chainId);
+
+      return {
+        isConnected: true,
+        address,
+        chainId,
+        balance,
+        provider,
+        signer,
+        chain: chain || null,
+      };
+    } else {
+      throw new Error("No wallet detected");
+    }
+  } catch (error: any) {
+    console.error("Error connecting wallet:", error);
+    throw error;
+  }
+};
+
 // Declare ethereum property on window object for TypeScript
 declare global {
   interface Window {
