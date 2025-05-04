@@ -37,11 +37,13 @@ const NetworkDisplay: React.FC<NetworkDisplayProps> = ({
     return null;
   }
 
+  const currentChainName = wallet.chain?.name || "Unknown Network";
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant={variant} className={className}>
-          {wallet.chain?.name || "Unknown Network"}
+          {currentChainName}
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

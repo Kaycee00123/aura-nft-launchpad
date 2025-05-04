@@ -2,7 +2,6 @@
 import { createConfig, http } from 'wagmi'
 import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains'
 import { createWeb3Modal } from '@web3modal/wagmi/react'
-import { walletConnectProvider } from '@web3modal/wagmi'
 
 // Define custom chains matching our previous structure
 const abstractMainnet = {
@@ -79,14 +78,14 @@ const core = {
 
 // All supported chains
 export const supportedChains = [
+  mainnet,
+  sepolia,
+  base,
+  arbitrum,
   abstractMainnet,
   abstractTestnet,
   monadTestnet,
-  base,
-  arbitrum,
   core,
-  mainnet, // Add mainnet for testing purposes
-  sepolia, // Add testnet for testing purposes
 ];
 
 // This is a placeholder - replace with your actual project ID from WalletConnect Cloud
@@ -95,7 +94,7 @@ const projectId = '6f7da8ecb5707a7c8340093786426533';
 
 // Create wagmi config
 export const config = createConfig({
-  chains: supportedChains,
+  chains: [mainnet, sepolia, base, arbitrum, abstractMainnet, abstractTestnet, monadTestnet, core],
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),

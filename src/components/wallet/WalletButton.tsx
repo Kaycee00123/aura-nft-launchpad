@@ -62,6 +62,9 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
     );
   }
 
+  // Get the current chain symbol
+  const chainSymbol = wallet.chain?.nativeCurrency?.symbol || "ETH";
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -79,7 +82,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
           <p className="font-medium">{wallet.chain?.name || "Unknown Network"}</p>
           {wallet.balance && (
             <p className="mt-1 font-mono text-sm">
-              {parseFloat(wallet.balance).toFixed(4)} {wallet.chain?.nativeCurrency?.symbol || "ETH"}
+              {parseFloat(wallet.balance).toFixed(4)} {chainSymbol}
             </p>
           )}
         </div>

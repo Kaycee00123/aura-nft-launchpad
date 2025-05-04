@@ -6,8 +6,8 @@ import {
   useConnect, 
   useDisconnect, 
   useBalance, 
-  useNetwork, 
-  useSwitchNetwork 
+  useChainId,
+  useSwitchChain
 } from 'wagmi'
 import { supportedChains } from "@/lib/wallet-config";
 import { type Address } from 'viem'
@@ -40,13 +40,12 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { chain } = useNetwork();
-  const { switchNetwork } = useSwitchNetwork();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   
   // Get balance using wagmi hook
   const balanceQuery = useBalance({
     address,
-    enabled: !!address,
   });
 
   // Update balance when it changes
@@ -55,6 +54,9 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setBalance(balanceQuery.data.formatted);
     }
   }, [balanceQuery.data]);
+
+  // Find the current chain from supportedChains
+  const currentChain = supportedChains.find(chain => chain.id === chainId);
 
   // Connect wallet function
   const connectWallet = async () => {
@@ -106,8 +108,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Switch network function
-  const switchToChain = async (chainId: number): Promise<boolean> => {
-    if (!switchNetwork) {
+  const switchToChain = async (targetChainId: number): Promise<boolean> => {
+    if (!switchChain) {
       toast({
         variant: "destructive",
         title: "Network Switch Unavailable",
@@ -118,7 +120,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       setIsLoading(true);
-      await switchNetwork(chainId);
+      await switchChain({ chainId: targetChainId });
       return true;
     } catch (error: any) {
       console.error("Error switching network:", error);
@@ -137,9 +139,9 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const walletState = {
     isConnected,
     address,
-    chainId: chain?.id,
+    chainId,
     balance,
-    chain,
+    chain: currentChain,
   };
 
   return (
