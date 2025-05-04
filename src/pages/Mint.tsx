@@ -1,267 +1,308 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useWallet } from "@/context/WalletContext";
-import { mockNFTDrops, NFTDrop } from "@/lib/mock-data";
-import { Loader, Wallet, Check, X } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Loader } from "lucide-react";
+
+interface NFTDrop {
+  name: string;
+  symbol: string;
+  totalSupply: number;
+  maxSupply: number;
+  price: number;
+  mintStart: string;
+  mintEnd: string;
+  isSoulbound: boolean;
+  isWhitelistEnabled: boolean;
+  creator: string;
+  contractAddress: string;
+}
 
 const Mint = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { address } = useParams<{ address: string }>();
   const navigate = useNavigate();
-  const { wallet, isConnected, connectUserWallet } = useWallet();
   const { toast } = useToast();
+  
   const [drop, setDrop] = useState<NFTDrop | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
-  const [mintStatus, setMintStatus] = useState<"idle" | "minting" | "success" | "error">("idle");
-
-  useEffect(() => {
-    // Fetch drop data
-    const foundDrop = mockNFTDrops.find((d) => d.slug === slug);
-    if (foundDrop) {
-      setDrop(foundDrop);
-    } else {
-      navigate("/explore");
+  const [loading, setLoading] = useState(true);
+  const [minting, setMinting] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [wallet, setWallet] = useState<string | null>(null);
+  
+  const fetchDropDetails = async () => {
+    try {
+      // Mock API call
+      setLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock data
+      const mockDrop: NFTDrop = {
+        name: "Sample NFT Collection",
+        symbol: "SAMPLE",
+        totalSupply: 123,
+        maxSupply: 1000,
+        price: 0.05,
+        mintStart: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        mintEnd: new Date(Date.now() + 604800000).toISOString(), // 7 days from now
+        isSoulbound: false,
+        isWhitelistEnabled: false,
+        creator: "0x1234567890abcdef1234567890abcdef12345678",
+        contractAddress: address || "0x"
+      };
+      
+      setDrop(mockDrop);
+    } catch (error) {
+      console.error("Error fetching drop:", error);
       toast({
-        title: "Drop Not Found",
-        description: "We couldn't find the drop you're looking for.",
+        title: "Error",
+        description: "Failed to load drop details",
         variant: "destructive",
       });
-    }
-  }, [slug, navigate, toast]);
-
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0 && value <= 10) {
-      setQuantity(value);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const handleMint = async () => {
-    if (!isConnected) {
+  
+  useEffect(() => {
+    fetchDropDetails();
+  }, [address]);
+  
+  const connectWallet = async () => {
+    try {
+      // Mock wallet connection
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const mockAddress = "0x" + Math.random().toString(16).slice(2, 42);
+      setWallet(mockAddress);
+      
       toast({
-        title: "Wallet Not Connected",
-        description: "Please connect your wallet to mint NFTs.",
+        title: "Wallet Connected",
+        description: `Connected with ${mockAddress.slice(0, 6)}...${mockAddress.slice(-4)}`,
+      });
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect wallet",
         variant: "destructive",
       });
-      return;
     }
-
-    if (!drop) return;
-    
-    setMintStatus("minting");
+  };
+  
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value >= 1) {
+      // Ensure we don't exceed available supply
+      if (drop && drop.maxSupply - drop.totalSupply >= value) {
+        setQuantity(value);
+      } else if (drop) {
+        setQuantity(drop.maxSupply - drop.totalSupply);
+      }
+    } else {
+      setQuantity(1);
+    }
+  };
+  
+  const mintNFTs = async () => {
+    if (!wallet || !drop) return;
     
     try {
-      // Simulate blockchain interaction delay
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      setMinting(true);
+      // Calculate total price
+      const totalPrice = drop.price * quantity;
       
-      // Mock successful mint
-      setMintStatus("success");
-      
-      // Update minted count
-      const updatedDrop = { ...drop, minted: drop.minted + quantity };
-      setDrop(updatedDrop);
+      // Mock mint transaction
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
-        title: "Mint Successful!",
-        description: `You have successfully minted ${quantity} NFT${quantity > 1 ? 's' : ''}.`,
+        title: "Success!",
+        description: `Minted ${quantity} NFT${quantity > 1 ? 's' : ''}!`,
       });
       
-      // In a real app, we would update the blockchain here
+      // Refresh drop details to reflect updated supply
+      fetchDropDetails();
     } catch (error) {
-      console.error("Mint error:", error);
-      setMintStatus("error");
+      console.error("Error minting:", error);
       toast({
         title: "Mint Failed",
-        description: "There was an error minting your NFT. Please try again.",
+        description: "Transaction was not successful",
         variant: "destructive",
       });
+    } finally {
+      setMinting(false);
     }
   };
+  
+  const isMintActive = () => {
+    if (!drop) return false;
+    
+    const now = new Date();
+    const mintStart = new Date(drop.mintStart);
+    const mintEnd = new Date(drop.mintEnd);
+    
+    return now >= mintStart && now <= mintEnd;
+  };
+  
+  const formatETH = (value: number) => {
+    return `${value} ETH`;
+  };
 
-  if (!drop) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader className="h-8 w-8 animate-spin text-aura-purple" />
-        </main>
-        <Footer />
+      <div className="flex justify-center items-center min-h-[500px]">
+        <Loader className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
   }
-
-  const totalCost = parseFloat((quantity * parseFloat(drop.price)).toFixed(4));
-  const isActive = drop.status === "active";
-  const remainingSupply = drop.supply - drop.minted;
-  const availableSupply = Math.min(10, remainingSupply);
-
+  
+  if (!drop) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold">Drop Not Found</h2>
+        <p className="text-gray-500 mt-2">The NFT drop you're looking for doesn't exist</p>
+        <Button 
+          onClick={() => navigate("/explore")}
+          className="mt-6"
+        >
+          Explore Other Drops
+        </Button>
+      </div>
+    );
+  }
+  
+  const remainingSupply = drop.maxSupply - drop.totalSupply;
+  
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <Header />
-      <main className="flex-1 container mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/drop/${drop.slug}`)}
-            className="hover:text-aura-purple"
-          >
-            &larr; Back to Drop
-          </Button>
+    <div className="container max-w-5xl mx-auto py-8 px-4">
+      <div className="mb-6">
+        <Button variant="outline" size="sm" onClick={() => navigate(`/drops/${drop.contractAddress}`)}>
+          ← Back to Drop Details
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Left column - NFT preview */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>{drop.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                {/* Replace with actual NFT preview image */}
+                <div className="text-gray-400 text-center p-8">
+                  <div className="text-6xl mb-4">🖼️</div>
+                  <p>NFT Preview</p>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Collection:</span>
+                  <span className="font-medium">{drop.name} ({drop.symbol})</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-gray-500">Price:</span>
+                  <span className="font-medium">{formatETH(drop.price)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left column - NFT Image */}
-          <div>
-            <Card className="overflow-hidden">
-              <div className="aspect-square w-full">
-                <img
-                  src={drop.bannerImage}
-                  alt={drop.title}
-                  className="w-full h-full object-cover"
+        {/* Right column - Mint controls */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Mint NFT</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-500">Price per NFT:</span>
+                  <span className="font-medium">{formatETH(drop.price)}</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-500">Available:</span>
+                  <span className="font-medium">{remainingSupply} / {drop.maxSupply}</span>
+                </div>
+              </div>
+              
+              {drop.isWhitelistEnabled && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-yellow-800 text-sm">
+                    This drop requires whitelist access to mint.
+                  </p>
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity
+                </label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  max={remainingSupply.toString()} // Convert to string
+                  value={quantity}
+                  onChange={handleQuantityChange}
+                  disabled={!wallet || !isMintActive() || remainingSupply === 0}
                 />
               </div>
-            </Card>
-          </div>
-          
-          {/* Right column - Mint interface */}
-          <div>
-            <h1 className="text-2xl font-bold mb-2">{drop.title}</h1>
-            <div className="flex items-center mb-6">
-              <img
-                src={drop.creator.avatar}
-                alt={drop.creator.name}
-                className="w-6 h-6 rounded-full mr-2"
-              />
-              <span>by {drop.creator.name}</span>
-            </div>
-            
-            <Card className="mb-6">
-              <CardContent className="pt-6">
-                <div className="grid gap-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Price</span>
-                    <span className="font-semibold">{drop.price} {drop.currency}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Remaining</span>
-                    <span className="font-semibold">{remainingSupply} / {drop.supply}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Blockchain</span>
-                    <span className="font-semibold">{drop.blockchain}</span>
-                  </div>
+              
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="flex justify-between font-medium">
+                  <span>Total Price:</span>
+                  <span>{formatETH(drop.price * quantity)}</span>
                 </div>
-              </CardContent>
-            </Card>
-            
-            {/* Mint UI */}
-            <Card>
-              <CardContent className="pt-6">
-                <h2 className="text-lg font-semibold mb-4">Mint NFT</h2>
-                
-                {!isConnected ? (
-                  <Button 
-                    onClick={connectUserWallet}
-                    className="w-full bg-aura-purple hover:bg-aura-purple-dark text-white py-6 text-lg"
-                  >
-                    <Wallet className="mr-2 h-5 w-5" />
-                    Connect Wallet
-                  </Button>
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                      <div className="flex items-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={quantity <= 1}
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className="h-10 px-3"
-                        >
-                          -
-                        </Button>
-                        <Input
-                          id="quantity"
-                          type="number"
-                          min="1"
-                          max={String(availableSupply)}
-                          value={String(quantity)}
-                          onChange={handleQuantityChange}
-                          className="max-w-28"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          {(parseFloat(drop.price) * quantity).toFixed(4)} {drop.currency}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={quantity >= 10 || quantity >= remainingSupply}
-                          onClick={() => setQuantity(Math.min(10, remainingSupply, quantity + 1))}
-                          className="h-10 px-3"
-                        >
-                          +
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">Max 10 per transaction</p>
-                    </div>
-                    
-                    <div className="flex justify-between py-4 border-t border-gray-200">
-                      <span>Total Cost</span>
-                      <span className="font-semibold">{totalCost.toFixed(4)} {drop.currency}</span>
-                    </div>
-                    
-                    <Button
-                      onClick={handleMint}
-                      disabled={!isActive || mintStatus === "minting" || remainingSupply === 0}
-                      className="w-full bg-aura-purple hover:bg-aura-purple-dark text-white py-6 text-lg"
-                    >
-                      {mintStatus === "idle" && "Mint Now"}
-                      {mintStatus === "minting" && (
-                        <>
-                          <Loader className="mr-2 h-4 w-4 animate-spin" />
-                          Minting...
-                        </>
-                      )}
-                      {mintStatus === "success" && (
-                        <>
-                          <Check className="mr-2 h-4 w-4" />
-                          Mint Successful
-                        </>
-                      )}
-                      {mintStatus === "error" && (
-                        <>
-                          <X className="mr-2 h-4 w-4" />
-                          Mint Failed
-                        </>
-                      )}
-                    </Button>
-                    
-                    {!isActive && (
-                      <p className="text-sm text-red-500 mt-2 text-center">
-                        {drop.status === "upcoming" ? "Drop is not live yet" : "Drop has ended"}
-                      </p>
-                    )}
-                    
-                    {remainingSupply === 0 && (
-                      <p className="text-sm text-red-500 mt-2 text-center">
-                        Sold out!
-                      </p>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+              
+              {!wallet ? (
+                <Button 
+                  onClick={connectWallet}
+                  className="w-full"
+                >
+                  Connect Wallet
+                </Button>
+              ) : !isMintActive() ? (
+                <Button disabled className="w-full">
+                  {new Date(drop.mintStart) > new Date() 
+                    ? "Mint Not Started Yet" 
+                    : "Mint Ended"}
+                </Button>
+              ) : remainingSupply === 0 ? (
+                <Button disabled className="w-full">
+                  Sold Out
+                </Button>
+              ) : (
+                <Button 
+                  onClick={mintNFTs} 
+                  disabled={minting || quantity > remainingSupply || quantity.toString() === "0"} // Convert to string
+                  className="w-full"
+                >
+                  {minting ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Minting...
+                    </>
+                  ) : (
+                    `Mint ${quantity} NFT${quantity !== 1 ? 's' : ''}`
+                  )}
+                </Button>
+              )}
+              
+              {drop.isSoulbound && (
+                <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-200">
+                  This is a Soulbound token that cannot be transferred after minting.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 };

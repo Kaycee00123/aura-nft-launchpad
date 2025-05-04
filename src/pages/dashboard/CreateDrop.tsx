@@ -1,10 +1,9 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Form,
@@ -16,16 +15,18 @@ import {
   FormMessage
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader, Upload, ImageIcon } from "lucide-react";
+import { Loader, Upload, ImageIcon, Info } from "lucide-react";
 
 // Define form schema with validation
 const dropFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   symbol: z.string().min(1, "Symbol is required").max(8, "Symbol must be 8 characters or less"),
-  baseUri: z.string().min(1, "Base URI is required"),
+  dropType: z.enum(["single", "collection"]),
+  baseUri: z.string().optional(),
   maxSupply: z.number().min(1, "Max supply must be at least 1"),
   price: z.number().min(0, "Price must be a positive number"),
   mintStart: z.string().min(1, "Mint start time is required"),
@@ -33,9 +34,27 @@ const dropFormSchema = z.object({
   enableWhitelist: z.boolean().default(false),
   enableSoulbound: z.boolean().default(false),
   enableBurn: z.boolean().default(false),
-  bannerImage: z.instanceof(File).optional(),
-  dropLogo: z.instanceof(File).optional(),
-  mintDisplayImage: z.instanceof(File).optional(),
+  singleDropImage: z.instanceof(File).optional(),
+})
+.refine((data) => {
+  // If dropType is "single", singleDropImage is required
+  if (data.dropType === "single") {
+    return !!data.singleDropImage;
+  }
+  return true;
+}, {
+  message: "Image is required for Single Drop type",
+  path: ["singleDropImage"],
+})
+.refine((data) => {
+  // If dropType is "collection", baseUri is required
+  if (data.dropType === "collection") {
+    return !!data.baseUri && data.baseUri.trim() !== "";
+  }
+  return true;
+}, {
+  message: "Base URI is required for Full Collection type",
+  path: ["baseUri"],
 });
 
 type DropFormValues = z.infer<typeof dropFormSchema>;
@@ -45,13 +64,8 @@ const CreateDrop = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const bannerInputRef = useRef<HTMLInputElement>(null);
-  const dropLogoInputRef = useRef<HTMLInputElement>(null);
-  const mintDisplayImageInputRef = useRef<HTMLInputElement>(null);
-
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [dropLogoPreview, setDropLogoPreview] = useState<string | null>(null);
-  const [mintDisplayImagePreview, setMintDisplayImagePreview] = useState<string | null>(null);
+  const singleDropImageRef = useRef<HTMLInputElement>(null);
+  const [singleImagePreview, setSingleImagePreview] = useState<string | null>(null);
 
   // Initialize form
   const form = useForm<DropFormValues>({
@@ -59,6 +73,7 @@ const CreateDrop = () => {
     defaultValues: {
       name: "",
       symbol: "",
+      dropType: "single",
       baseUri: "",
       maxSupply: 1000,
       price: 0.05,
@@ -70,46 +85,98 @@ const CreateDrop = () => {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'bannerImage' | 'dropLogo' | 'mintDisplayImage') => {
+  // Watch the dropType to conditionally render form fields
+  const dropType = form.watch("dropType");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     // Create and set preview URL
     const previewUrl = URL.createObjectURL(file);
-    
-    if (fileType === 'bannerImage') {
-      setBannerPreview(previewUrl);
-      form.setValue("bannerImage", file);
-    } else if (fileType === 'dropLogo') {
-      setDropLogoPreview(previewUrl);
-      form.setValue("dropLogo", file);
-    } else if (fileType === 'mintDisplayImage') {
-      setMintDisplayImagePreview(previewUrl);
-      form.setValue("mintDisplayImage", file);
-    }
+    setSingleImagePreview(previewUrl);
+    form.setValue("singleDropImage", file);
   };
 
-  const triggerFileInput = (inputRef: React.RefObject<HTMLInputElement>) => {
-    inputRef.current?.click();
+  const triggerFileInput = useCallback(() => {
+    singleDropImageRef.current?.click();
+  }, []);
+
+  const uploadToIPFS = async (file: File): Promise<string> => {
+    // Simulate IPFS upload
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Mock IPFS CID response
+    const mockCid = "Qm" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    return `ipfs://${mockCid}`;
+  };
+
+  const generateMetadataForSingleDrop = async (image: string): Promise<string> => {
+    // Simulate metadata creation and upload
+    const metadata = {
+      name: form.getValues("name"),
+      image,
+      description: `${form.getValues("name")} NFT`,
+    };
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Return mock IPFS CID for metadata
+    const mockMetadataCid = "Qm" + Math.random().toString(36).substring(2, 15);
+    return `ipfs://${mockMetadataCid}`;
   };
 
   const onSubmit = async (values: DropFormValues) => {
-    // Validate required images
-    if (!values.bannerImage || !values.dropLogo || !values.mintDisplayImage) {
-      toast({
-        title: "Missing Images",
-        description: "Please upload all required images",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsSubmitting(true);
-    
+    let baseUriToUse = "";
+
     try {
-      console.log("Form values:", values);
+      if (values.dropType === "single") {
+        if (!values.singleDropImage) {
+          toast({
+            title: "Missing Image",
+            description: "Please upload an image for your Single Drop",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Upload image to IPFS
+        toast({
+          title: "Uploading image to IPFS...",
+          description: "Please wait while we upload your image.",
+        });
+        
+        const imageCid = await uploadToIPFS(values.singleDropImage);
+        
+        // Generate and upload metadata
+        toast({
+          title: "Creating metadata...",
+          description: "Generating metadata for your collection.",
+        });
+        
+        baseUriToUse = await generateMetadataForSingleDrop(imageCid);
+      } else {
+        // Collection type - use provided baseUri
+        if (!values.baseUri) {
+          toast({
+            title: "Missing Base URI",
+            description: "Please enter a Base URI for your collection",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        
+        baseUriToUse = values.baseUri;
+      }
       
       // Simulate blockchain interaction
+      toast({
+        title: "Deploying smart contract...",
+        description: "Your NFT drop is being deployed to the blockchain.",
+      });
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Mock successful contract deployment
@@ -184,23 +251,65 @@ const CreateDrop = () => {
                   
                   <FormField
                     control={form.control}
-                    name="baseUri"
+                    name="dropType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Base URI *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="ipfs://" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          IPFS URI for your collection metadata
+                        <FormLabel>Drop Type *</FormLabel>
+                        <FormDescription className="mb-2">
+                          Select the type of NFT drop you want to create
                         </FormDescription>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="grid grid-cols-1 gap-4 pt-2"
+                          >
+                            <div className="flex items-center space-x-2 rounded-md border p-4">
+                              <RadioGroupItem value="single" id="single" />
+                              <label htmlFor="single" className="flex flex-col cursor-pointer">
+                                <span className="font-medium">Single Drop</span>
+                                <span className="text-sm text-gray-500">
+                                  Use one image for all NFTs (like an Open Edition)
+                                </span>
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2 rounded-md border p-4">
+                              <RadioGroupItem value="collection" id="collection" />
+                              <label htmlFor="collection" className="flex flex-col cursor-pointer">
+                                <span className="font-medium">Full Collection</span>
+                                <span className="text-sm text-gray-500">
+                                  Use multiple images and metadata stored in IPFS folder
+                                </span>
+                              </label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  
+                  {dropType === "collection" && (
+                    <FormField
+                      control={form.control}
+                      name="baseUri"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Base URI *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="ipfs://" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            IPFS folder URI containing your collection metadata
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </CardContent>
               </Card>
               
@@ -369,163 +478,95 @@ const CreateDrop = () => {
             
             {/* Right Column */}
             <div className="space-y-6">
+              {dropType === "single" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Single Drop Image</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <FormLabel htmlFor="singleDropImage" className="block text-sm font-medium mb-1">
+                        NFT Image *
+                      </FormLabel>
+                      <FormDescription className="mb-2">
+                        This image will be used for all NFTs in this drop
+                      </FormDescription>
+                      <input
+                        ref={singleDropImageRef}
+                        type="file"
+                        id="singleDropImage"
+                        accept="image/jpeg,image/png,image/gif"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      {singleImagePreview ? (
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                          <img 
+                            src={singleImagePreview} 
+                            alt="NFT preview"
+                            className="w-full h-64 object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="absolute bottom-2 right-2"
+                            onClick={triggerFileInput}
+                          >
+                            Change Image
+                          </Button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={triggerFileInput}
+                        >
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <Upload className="w-10 h-10 text-gray-400" />
+                            <p className="text-sm text-gray-500">Click to upload NFT image</p>
+                            <p className="text-xs text-gray-400">Supported formats: JPG, PNG, GIF</p>
+                          </div>
+                        </div>
+                      )}
+                      {form.formState.errors.singleDropImage && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {form.formState.errors.singleDropImage.message}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
-                  <CardTitle>Images</CardTitle>
+                  <CardTitle>Drop Information</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Banner Image Upload */}
-                  <div>
-                    <FormLabel htmlFor="bannerImage" className="block text-sm font-medium mb-1">
-                      Banner Image *
-                    </FormLabel>
-                    <FormDescription className="mb-2">
-                      This wide image will appear at the top of your drop page
-                    </FormDescription>
-                    <input
-                      ref={bannerInputRef}
-                      type="file"
-                      id="bannerImage"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'bannerImage')}
-                      className="hidden"
-                    />
-                    {bannerPreview ? (
-                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                        <img 
-                          src={bannerPreview} 
-                          alt="Banner preview"
-                          className="w-full h-40 object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="absolute bottom-2 right-2"
-                          onClick={() => triggerFileInput(bannerInputRef)}
-                        >
-                          Change Image
-                        </Button>
+                <CardContent className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <div className="flex gap-2">
+                      <Info className="h-5 w-5 text-blue-500" />
+                      <div>
+                        <h4 className="font-medium text-blue-700">About {dropType === "single" ? "Single Drop" : "Full Collection"}</h4>
+                        {dropType === "single" ? (
+                          <p className="text-sm text-blue-600 mt-1">
+                            Single Drop uses the same artwork for every NFT. Perfect for open editions
+                            where each NFT is identical. We'll handle uploading your image to IPFS and
+                            creating the metadata automatically.
+                          </p>
+                        ) : (
+                          <p className="text-sm text-blue-600 mt-1">
+                            Full Collection requires pre-uploading your assets to IPFS. You'll need to
+                            create metadata files for each NFT and provide the base URI to the folder.
+                            This allows for unique artwork for each token ID in your collection.
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <div 
-                        className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => triggerFileInput(bannerInputRef)}
-                      >
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <Upload className="w-10 h-10 text-gray-400" />
-                          <p className="text-sm text-gray-500">Click to upload banner image</p>
-                          <p className="text-xs text-gray-400">Recommended size: 1400 x 400px</p>
-                        </div>
-                      </div>
-                    )}
-                    {form.formState.errors.bannerImage && (
-                      <p className="text-sm text-red-500 mt-1">Banner image is required</p>
-                    )}
-                  </div>
-                  
-                  {/* Drop Logo Upload */}
-                  <div>
-                    <FormLabel htmlFor="dropLogo" className="block text-sm font-medium mb-1">
-                      Drop Logo *
-                    </FormLabel>
-                    <FormDescription className="mb-2">
-                      This is the main logo/icon representing your drop collection
-                    </FormDescription>
-                    <input
-                      ref={dropLogoInputRef}
-                      type="file"
-                      id="dropLogo"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'dropLogo')}
-                      className="hidden"
-                    />
-                    {dropLogoPreview ? (
-                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                        <img 
-                          src={dropLogoPreview} 
-                          alt="Drop logo preview"
-                          className="w-full h-64 object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="absolute bottom-2 right-2"
-                          onClick={() => triggerFileInput(dropLogoInputRef)}
-                        >
-                          Change Image
-                        </Button>
-                      </div>
-                    ) : (
-                      <div 
-                        className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => triggerFileInput(dropLogoInputRef)}
-                      >
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <ImageIcon className="w-10 h-10 text-gray-400" />
-                          <p className="text-sm text-gray-500">Click to upload drop logo</p>
-                          <p className="text-xs text-gray-400">This will be shown in listings and cards</p>
-                        </div>
-                      </div>
-                    )}
-                    {form.formState.errors.dropLogo && (
-                      <p className="text-sm text-red-500 mt-1">Drop logo is required</p>
-                    )}
-                  </div>
-                  
-                  {/* Mint Display Image Upload */}
-                  <div>
-                    <FormLabel htmlFor="mintDisplayImage" className="block text-sm font-medium mb-1">
-                      Mint Display Image *
-                    </FormLabel>
-                    <FormDescription className="mb-2">
-                      This image will be displayed during the minting process
-                    </FormDescription>
-                    <input
-                      ref={mintDisplayImageInputRef}
-                      type="file"
-                      id="mintDisplayImage"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'mintDisplayImage')}
-                      className="hidden"
-                    />
-                    {mintDisplayImagePreview ? (
-                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                        <img 
-                          src={mintDisplayImagePreview} 
-                          alt="Mint display image preview"
-                          className="w-full h-64 object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="absolute bottom-2 right-2"
-                          onClick={() => triggerFileInput(mintDisplayImageInputRef)}
-                        >
-                          Change Image
-                        </Button>
-                      </div>
-                    ) : (
-                      <div 
-                        className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => triggerFileInput(mintDisplayImageInputRef)}
-                      >
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <ImageIcon className="w-10 h-10 text-gray-400" />
-                          <p className="text-sm text-gray-500">Click to upload mint display image</p>
-                          <p className="text-xs text-gray-400">Users will see this image when minting</p>
-                        </div>
-                      </div>
-                    )}
-                    {form.formState.errors.mintDisplayImage && (
-                      <p className="text-sm text-red-500 mt-1">Mint display image is required</p>
-                    )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-              
+
               <div className="mt-6 flex gap-4">
                 <Button 
                   type="button" 
