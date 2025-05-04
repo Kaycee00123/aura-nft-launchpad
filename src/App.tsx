@@ -4,11 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/context/AuthContext";
+import { WalletProvider } from "@/context/WalletContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import Explore from "./pages/Explore";
 import DropDetails from "./pages/DropDetails";
 import Mint from "./pages/Mint";
@@ -26,21 +24,19 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <AuthProvider>
+      <WalletProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/drop/:slug" element={<DropDetails />} />
             <Route path="/mint/:slug" element={<Mint />} />
             <Route path="/creator/:username" element={<CreatorProfile />} />
             <Route path="/admin" element={<AdminPanel />} />
             
-            {/* Dashboard Routes */}
+            {/* Dashboard Routes - No auth required now */}
             <Route path="/dashboard" element={<Dashboard />}>
               <Route index element={<StatsPage />} />
               <Route path="create" element={<CreateDrop />} />
@@ -54,7 +50,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
-      </AuthProvider>
+      </WalletProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );

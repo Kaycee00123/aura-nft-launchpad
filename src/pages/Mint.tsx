@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@/context/WalletContext";
 import { mockNFTDrops, NFTDrop } from "@/lib/mock-data";
 import { Loader, Wallet, Check, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 const Mint = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { user, connectUserWallet } = useAuth();
+  const { wallet, isConnected, connectUserWallet } = useWallet();
   const { toast } = useToast();
   const [drop, setDrop] = useState<NFTDrop | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
@@ -43,7 +43,7 @@ const Mint = () => {
   };
 
   const handleMint = async () => {
-    if (!user?.wallet?.isConnected) {
+    if (!isConnected) {
       toast({
         title: "Wallet Not Connected",
         description: "Please connect your wallet to mint NFTs.",
@@ -72,7 +72,7 @@ const Mint = () => {
         description: `You have successfully minted ${quantity} NFT${quantity > 1 ? 's' : ''}.`,
       });
       
-      // In a real app, we would update Supabase here
+      // In a real app, we would update the blockchain here
     } catch (error) {
       console.error("Mint error:", error);
       setMintStatus("error");
@@ -165,7 +165,7 @@ const Mint = () => {
               <CardContent className="pt-6">
                 <h2 className="text-lg font-semibold mb-4">Mint NFT</h2>
                 
-                {!user?.wallet?.isConnected ? (
+                {!isConnected ? (
                   <Button 
                     onClick={connectUserWallet}
                     className="w-full bg-aura-purple hover:bg-aura-purple-dark text-white py-6 text-lg"

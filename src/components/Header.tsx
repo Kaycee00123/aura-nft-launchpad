@@ -2,23 +2,22 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@/context/WalletContext";
 import { shortenAddress } from "@/lib/wallet-utils";
-import { Wallet } from "lucide-react";
+import { Wallet, Plus } from "lucide-react";
 
 export default function Header() {
-  const { user, isAuthenticated, logout, connectUserWallet, disconnectWallet } = useAuth();
+  const { wallet, isConnected, connectUserWallet, disconnectWallet } = useWallet();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleWalletConnect = () => {
-    if (user?.wallet?.isConnected) {
+    if (isConnected) {
       disconnectWallet();
     } else {
       connectUserWallet();
@@ -45,73 +44,33 @@ export default function Header() {
             <Link to="/explore" className="font-medium hover:text-aura-purple transition-colors">
               Explore
             </Link>
-            <Link to="/create" className="font-medium hover:text-aura-purple transition-colors">
+            <Link to="/dashboard/create" className="font-medium hover:text-aura-purple transition-colors">
               Create
             </Link>
-            <Link to="/about" className="font-medium hover:text-aura-purple transition-colors">
-              About
+            <Link to="/dashboard/drops" className="font-medium hover:text-aura-purple transition-colors">
+              My Drops
             </Link>
           </div>
 
-          {/* Auth Buttons & User Menu */}
+          {/* Wallet Connect Button */}
           <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-                {/* Wallet Button */}
-                <Button 
-                  variant="outline" 
-                  className="font-medium border-aura-purple text-aura-purple hover:bg-aura-purple hover:text-white"
-                  onClick={handleWalletConnect}
-                >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  {user?.wallet?.isConnected 
-                    ? shortenAddress(user.wallet.address)
-                    : "Connect Wallet"}
-                </Button>
-
-                {/* User Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Avatar className="cursor-pointer">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/personas/svg?seed=${user?.username}`} alt={user?.username} />
-                      <AvatarFallback>{user?.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem className="font-medium">{user?.username}</DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Link to="/profile" className="w-full">Profile</Link>
-                    </DropdownMenuItem>
-                    {user?.isCreator && (
-                      <DropdownMenuItem>
-                        <Link to="/dashboard" className="w-full">Creator Dashboard</Link>
-                      </DropdownMenuItem>
-                    )}
-                    {user?.isAdmin && (
-                      <DropdownMenuItem>
-                        <Link to="/admin" className="w-full">Admin Panel</Link>
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={logout}>
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost" className="font-medium hover:bg-aura-purple-light hover:text-aura-purple">
-                    Log in
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="font-medium bg-aura-purple hover:bg-aura-purple-dark text-white">
-                    Sign up
-                  </Button>
-                </Link>
-              </>
-            )}
+            <Button 
+              variant="outline" 
+              className="font-medium border-aura-purple text-aura-purple hover:bg-aura-purple hover:text-white"
+              onClick={handleWalletConnect}
+            >
+              <Wallet className="h-4 w-4 mr-2" />
+              {isConnected 
+                ? shortenAddress(wallet?.address || "")
+                : "Connect Wallet"}
+            </Button>
+            
+            <Link to="/dashboard/create">
+              <Button className="hidden md:flex items-center bg-aura-purple hover:bg-aura-purple-dark text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Drop
+              </Button>
+            </Link>
 
             {/* Mobile Menu Button */}
             <div className="md:hidden">
@@ -166,18 +125,18 @@ export default function Header() {
               Explore
             </Link>
             <Link
-              to="/create"
+              to="/dashboard/create"
               className="block px-4 py-2 font-medium hover:bg-aura-purple-light hover:text-aura-purple rounded-md"
               onClick={() => setIsMenuOpen(false)}
             >
               Create
             </Link>
             <Link
-              to="/about"
+              to="/dashboard/drops"
               className="block px-4 py-2 font-medium hover:bg-aura-purple-light hover:text-aura-purple rounded-md"
               onClick={() => setIsMenuOpen(false)}
             >
-              About
+              My Drops
             </Link>
           </div>
         )}

@@ -1,32 +1,13 @@
+
 import { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Plus, LayoutDashboard, Image, ChartBar, Settings, Menu, X, FolderPlus } from "lucide-react";
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col bg-white">
-        <Header />
-        <main className="flex-1 flex items-center justify-center flex-col gap-6 p-6">
-          <h1 className="text-2xl font-bold text-center">Creator Dashboard Access Denied</h1>
-          <p className="text-gray-600 max-w-md text-center">
-            You need to be logged in as a creator to access this page.
-          </p>
-          <Button asChild>
-            <NavLink to="/login">Login</NavLink>
-          </Button>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -66,15 +47,6 @@ const Dashboard = () => {
       icon: <Settings className="h-5 w-5" />,
     },
   ];
-
-  // Helper function to check if a path is active
-  const isActiveLink = (path: string) => {
-    const currentPath = window.location.pathname;
-    if (path === "/dashboard") {
-      return currentPath === "/dashboard";
-    }
-    return currentPath.startsWith(path);
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white">

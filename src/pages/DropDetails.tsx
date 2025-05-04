@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -6,7 +5,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { mockNFTDrops, NFTDrop } from "@/lib/mock-data";
-import { useAuth } from "@/context/AuthContext";
+import { useWallet } from "@/context/WalletContext";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -24,7 +23,7 @@ import { shortenAddress } from "@/lib/wallet-utils";
 
 const DropDetails = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { user, connectUserWallet } = useAuth();
+  const { wallet, isConnected, connectUserWallet } = useWallet();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [drop, setDrop] = useState<NFTDrop | null>(null);
@@ -40,12 +39,14 @@ const DropDetails = () => {
       setDrop(foundDrop);
       setSelectedImage(foundDrop.bannerImage);
       
-      // Check if current user is the creator (mock check)
-      if (user?.wallet?.isConnected) {
-        setIsCreator(Math.random() > 0.5); // Random for demo purposes
+      // Check if current user is the creator (based on wallet connection)
+      if (isConnected && wallet?.address) {
+        // This would be a real blockchain check in a production app
+        // For now, we'll simulate it with a mock check
+        setIsCreator(Math.random() > 0.5); 
       }
     }
-  }, [slug, user?.wallet?.isConnected]);
+  }, [slug, isConnected, wallet?.address]);
 
   useEffect(() => {
     // Calculate time left for upcoming drops
@@ -74,7 +75,7 @@ const DropDetails = () => {
   }, [drop]);
 
   const handleMint = async () => {
-    if (!user || !user.wallet?.isConnected) {
+    if (!isConnected) {
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to mint this NFT",
@@ -141,7 +142,7 @@ const DropDetails = () => {
   };
 
   const isActive = drop.status === "active";
-  const isMintable = isActive && user?.wallet?.isConnected;
+  const isMintable = isActive && isConnected;
   const mintProgress = (drop.minted / drop.supply) * 100;
   
   // Additional properties for the drop (mock data)
@@ -408,7 +409,7 @@ const DropDetails = () => {
               )}
               
               {/* Mint Button */}
-              {!user?.wallet?.isConnected ? (
+              {!isConnected ? (
                 <Button 
                   onClick={connectUserWallet}
                   className="w-full bg-aura-purple hover:bg-aura-purple-dark text-white py-6 text-lg mb-4"
