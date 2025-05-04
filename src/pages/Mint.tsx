@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@/context/WalletContext";
 import { Loader } from "lucide-react";
 
 interface NFTDrop {
@@ -25,12 +26,12 @@ const Mint = () => {
   const { address } = useParams<{ address: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { wallet, isConnected, connectWallet } = useWallet();
   
   const [drop, setDrop] = useState<NFTDrop | null>(null);
   const [loading, setLoading] = useState(true);
   const [minting, setMinting] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [wallet, setWallet] = useState<string | null>(null);
   
   const fetchDropDetails = async () => {
     try {
@@ -70,27 +71,6 @@ const Mint = () => {
     fetchDropDetails();
   }, [address]);
   
-  const connectWallet = async () => {
-    try {
-      // Mock wallet connection
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const mockAddress = "0x" + Math.random().toString(16).slice(2, 42);
-      setWallet(mockAddress);
-      
-      toast({
-        title: "Wallet Connected",
-        description: `Connected with ${mockAddress.slice(0, 6)}...${mockAddress.slice(-4)}`,
-      });
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect wallet",
-        variant: "destructive",
-      });
-    }
-  };
-  
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     if (!isNaN(value) && value >= 1) {
@@ -106,7 +86,7 @@ const Mint = () => {
   };
   
   const mintNFTs = async () => {
-    if (!wallet || !drop) return;
+    if (!isConnected || !wallet.address || !drop) return;
     
     try {
       setMinting(true);
@@ -177,7 +157,7 @@ const Mint = () => {
   return (
     <div className="container max-w-5xl mx-auto py-8 px-4">
       <div className="mb-6">
-        <Button variant="outline" size="sm" onClick={() => navigate(`/drops/${drop.contractAddress}`)}>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/drop/${drop.contractAddress}`)}>
           ← Back to Drop Details
         </Button>
       </div>
@@ -246,10 +226,10 @@ const Mint = () => {
                   id="quantity"
                   type="number"
                   min="1"
-                  max={remainingSupply.toString()} // Convert to string
+                  max={remainingSupply.toString()}
                   value={quantity}
                   onChange={handleQuantityChange}
-                  disabled={!wallet || !isMintActive() || remainingSupply === 0}
+                  disabled={!isConnected || !isMintActive() || remainingSupply === 0}
                 />
               </div>
               
@@ -260,10 +240,10 @@ const Mint = () => {
                 </div>
               </div>
               
-              {!wallet ? (
+              {!isConnected ? (
                 <Button 
                   onClick={connectWallet}
-                  className="w-full"
+                  className="w-full bg-aura-purple hover:bg-aura-purple-dark"
                 >
                   Connect Wallet
                 </Button>
@@ -280,8 +260,8 @@ const Mint = () => {
               ) : (
                 <Button 
                   onClick={mintNFTs} 
-                  disabled={minting || quantity > remainingSupply || quantity.toString() === "0"} // Convert to string
-                  className="w-full"
+                  disabled={minting || quantity > remainingSupply || quantity === 0}
+                  className="w-full bg-aura-purple hover:bg-aura-purple-dark"
                 >
                   {minting ? (
                     <>

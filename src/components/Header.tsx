@@ -8,21 +8,12 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { useWallet } from "@/context/WalletContext";
-import { shortenAddress } from "@/lib/wallet-utils";
-import { Wallet, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import WalletButton from "@/components/wallet/WalletButton";
+import NetworkDisplay from "@/components/wallet/NetworkDisplay";
 
 export default function Header() {
-  const { wallet, isConnected, connectUserWallet, disconnectWallet } = useWallet();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleWalletConnect = () => {
-    if (isConnected) {
-      disconnectWallet();
-    } else {
-      connectUserWallet();
-    }
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
@@ -52,18 +43,10 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Wallet Connect Button */}
+          {/* Wallet Connect Button and Network Display */}
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              className="font-medium border-aura-purple text-aura-purple hover:bg-aura-purple hover:text-white"
-              onClick={handleWalletConnect}
-            >
-              <Wallet className="h-4 w-4 mr-2" />
-              {isConnected 
-                ? shortenAddress(wallet?.address || "")
-                : "Connect Wallet"}
-            </Button>
+            <NetworkDisplay className="hidden md:flex" />
+            <WalletButton />
             
             <Link to="/dashboard/create">
               <Button className="hidden md:flex items-center bg-aura-purple hover:bg-aura-purple-dark text-white">
@@ -138,6 +121,9 @@ export default function Header() {
             >
               My Drops
             </Link>
+            <div className="px-4 py-2">
+              <NetworkDisplay />
+            </div>
           </div>
         )}
       </div>
