@@ -1,8 +1,8 @@
 
 import { createConfig, http } from 'wagmi'
 import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains'
-import { createWeb3Modal } from '@web3modal/wagmi'
-import { walletConnect } from '@web3modal/wagmi'
+import { createWeb3Modal } from '@web3modal/wagmi/react'
+import { walletConnectProvider } from '@web3modal/wagmi'
 
 // Define custom chains matching our previous structure
 const abstractMainnet = {

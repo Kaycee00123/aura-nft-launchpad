@@ -5,9 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletProvider } from "@/context/WalletContext";
-import { Web3Modal } from "@web3modal/react";
-import { WagmiConfig } from "wagmi";
-import { config, web3Modal } from "@/lib/wallet-config";
+import { config } from "@/lib/wallet-config";
+import { WagmiProvider } from "wagmi";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Explore from "./pages/Explore";
@@ -26,7 +25,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <WagmiConfig config={config}>
+    <WagmiProvider config={config}>
       <BrowserRouter>
         <WalletProvider>
           <TooltipProvider>
@@ -56,8 +55,7 @@ const App = () => (
           </TooltipProvider>
         </WalletProvider>
       </BrowserRouter>
-      <Web3Modal projectId={web3Modal.options.projectId} themeMode={web3Modal.options.themeMode} themeVariables={web3Modal.options.themeVariables} />
-    </WagmiConfig>
+    </WagmiProvider>
   </QueryClientProvider>
 );
 

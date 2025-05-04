@@ -8,9 +8,9 @@ import {
   useBalance, 
   useNetwork, 
   useSwitchNetwork 
-} from 'wagmi';
-import { supportedChains, config } from "@/lib/wallet-config";
-import { type Address } from 'viem';
+} from 'wagmi'
+import { supportedChains } from "@/lib/wallet-config";
+import { type Address } from 'viem'
 
 type WalletContextType = {
   wallet: {
