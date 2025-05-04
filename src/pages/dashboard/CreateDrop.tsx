@@ -1,118 +1,91 @@
 
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue
-} from "@/components/ui/select";
-import { Loader, Upload, ImageIcon, FileCode } from "lucide-react";
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Loader, Upload, ImageIcon } from "lucide-react";
 
-type DropFormData = {
-  title: string;
-  description: string;
-  symbol: string;
-  blockchain: string;
-  supply: number;
-  price: string;
-  currency: string;
-  mintStart: string;
-  mintEnd: string;
-  bannerImage: File | null;
-  displayImage: File | null;
-  contractImage: File | null;
-};
+// Define form schema with validation
+const dropFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  symbol: z.string().min(1, "Symbol is required").max(8, "Symbol must be 8 characters or less"),
+  baseUri: z.string().min(1, "Base URI is required"),
+  maxSupply: z.number().min(1, "Max supply must be at least 1"),
+  price: z.number().min(0, "Price must be a positive number"),
+  mintStart: z.string().min(1, "Mint start time is required"),
+  mintEnd: z.string().min(1, "Mint end time is required"),
+  enableWhitelist: z.boolean().default(false),
+  enableSoulbound: z.boolean().default(false),
+  enableBurn: z.boolean().default(false),
+  bannerImage: z.instanceof(File).optional(),
+  dropLogo: z.instanceof(File).optional(),
+  mintDisplayImage: z.instanceof(File).optional(),
+});
+
+type DropFormValues = z.infer<typeof dropFormSchema>;
 
 const CreateDrop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
-  const displayImageInputRef = useRef<HTMLInputElement>(null);
-  const contractImageInputRef = useRef<HTMLInputElement>(null);
   
-  const [formData, setFormData] = useState<DropFormData>({
-    title: "",
-    description: "",
-    symbol: "",
-    blockchain: "Ethereum",
-    supply: 1000,
-    price: "0.05",
-    currency: "ETH",
-    mintStart: "",
-    mintEnd: "",
-    bannerImage: null,
-    displayImage: null,
-    contractImage: null,
-  });
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const dropLogoInputRef = useRef<HTMLInputElement>(null);
+  const mintDisplayImageInputRef = useRef<HTMLInputElement>(null);
 
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [displayImagePreview, setDisplayImagePreview] = useState<string | null>(null);
-  const [contractImagePreview, setContractImagePreview] = useState<string | null>(null);
+  const [dropLogoPreview, setDropLogoPreview] = useState<string | null>(null);
+  const [mintDisplayImagePreview, setMintDisplayImagePreview] = useState<string | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  // Initialize form
+  const form = useForm<DropFormValues>({
+    resolver: zodResolver(dropFormSchema),
+    defaultValues: {
+      name: "",
+      symbol: "",
+      baseUri: "",
+      maxSupply: 1000,
+      price: 0.05,
+      mintStart: "",
+      mintEnd: "",
+      enableWhitelist: false,
+      enableSoulbound: false,
+      enableBurn: false,
+    },
+  });
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const numValue = parseInt(value);
-    
-    if (!isNaN(numValue) && numValue > 0) {
-      setFormData(prev => ({
-        ...prev,
-        [name]: numValue,
-      }));
-    }
-  };
-
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    // Allow decimal numbers
-    if (!isNaN(parseFloat(value)) || value === "" || value.endsWith(".")) {
-      setFormData(prev => ({
-        ...prev,
-        price: value,
-      }));
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'bannerImage' | 'displayImage' | 'contractImage') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'bannerImage' | 'dropLogo' | 'mintDisplayImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Update form data with the file
-    setFormData(prev => ({
-      ...prev,
-      [fileType]: file,
-    }));
-    
     // Create and set preview URL
     const previewUrl = URL.createObjectURL(file);
+    
     if (fileType === 'bannerImage') {
       setBannerPreview(previewUrl);
-    } else if (fileType === 'displayImage') {
-      setDisplayImagePreview(previewUrl);
-    } else if (fileType === 'contractImage') {
-      setContractImagePreview(previewUrl);
+      form.setValue("bannerImage", file);
+    } else if (fileType === 'dropLogo') {
+      setDropLogoPreview(previewUrl);
+      form.setValue("dropLogo", file);
+    } else if (fileType === 'mintDisplayImage') {
+      setMintDisplayImagePreview(previewUrl);
+      form.setValue("mintDisplayImage", file);
     }
   };
 
@@ -120,14 +93,12 @@ const CreateDrop = () => {
     inputRef.current?.click();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
-    if (!formData.title || !formData.description || !formData.displayImage || !formData.bannerImage || !formData.symbol || !formData.contractImage) {
+  const onSubmit = async (values: DropFormValues) => {
+    // Validate required images
+    if (!values.bannerImage || !values.dropLogo || !values.mintDisplayImage) {
       toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields and upload required images",
+        title: "Missing Images",
+        description: "Please upload all required images",
         variant: "destructive",
       });
       return;
@@ -136,15 +107,21 @@ const CreateDrop = () => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, this would send data to Supabase
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log("Form values:", values);
+      
+      // Simulate blockchain interaction
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock successful contract deployment
+      const contractAddress = "0x" + Math.random().toString(16).slice(2, 42);
       
       toast({
-        title: "Drop Created!",
-        description: "Your NFT drop has been successfully created.",
+        title: "Drop Created Successfully!",
+        description: "Your NFT drop has been deployed to the blockchain.",
       });
       
-      navigate("/dashboard/drops");
+      // Navigate to success page with contract address
+      navigate(`/dashboard/drops/success?address=${contractAddress}`);
     } catch (error) {
       console.error("Error creating drop:", error);
       toast({
@@ -161,342 +138,421 @@ const CreateDrop = () => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Create New Drop</h1>
-        <p className="text-gray-500">Set up your next NFT collection</p>
+        <p className="text-gray-500">Configure and deploy your NFT drop</p>
       </div>
       
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                    Title *
-                  </label>
-                  <Input
-                    id="title"
-                    name="title"
-                    placeholder="My Amazing NFT Collection"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    required
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Collection Name *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="My Amazing NFT Collection" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div>
-                  <label htmlFor="symbol" className="block text-sm font-medium text-gray-700 mb-1">
-                    Symbol *
-                  </label>
-                  <Input
-                    id="symbol"
+                  
+                  <FormField
+                    control={form.control}
                     name="symbol"
-                    placeholder="NFTC"
-                    value={formData.symbol}
-                    onChange={handleInputChange}
-                    maxLength={8}
-                    required
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Symbol *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="NFTC" maxLength={8} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Symbol used for the token (e.g. BAYC, AZUKI)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Symbol used for the token (e.g. BAYC, AZUKI)</p>
-                </div>
-                
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description *
-                  </label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Describe your NFT collection..."
-                    rows={4}
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    required
-                    className="resize-none"
+                  
+                  <FormField
+                    control={form.control}
+                    name="baseUri"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Base URI *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="ipfs://" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          IPFS URI for your collection metadata
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div>
-                  <label htmlFor="blockchain" className="block text-sm font-medium text-gray-700 mb-1">
-                    Blockchain
-                  </label>
-                  <Select
-                    value={formData.blockchain}
-                    onValueChange={(value) => handleSelectChange("blockchain", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select blockchain" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Ethereum">Ethereum</SelectItem>
-                      <SelectItem value="Polygon">Polygon</SelectItem>
-                      <SelectItem value="Solana">Solana</SelectItem>
-                      <SelectItem value="Binance">Binance Smart Chain</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Sales Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label htmlFor="supply" className="block text-sm font-medium text-gray-700 mb-1">
-                    Total Supply
-                  </label>
-                  <Input
-                    id="supply"
-                    name="supply"
-                    type="number"
-                    min="1"
-                    value={formData.supply}
-                    onChange={handleNumberChange}
-                    required
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sales Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="maxSupply"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Supply *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="1"
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (!isNaN(value) && value > 0) {
+                                field.onChange(value);
+                              }
+                            }}
+                            value={field.value}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                      Price
-                    </label>
-                    <Input
-                      id="price"
-                      name="price"
-                      value={formData.price}
-                      onChange={handlePriceChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-                      Currency
-                    </label>
-                    <Select
-                      value={formData.currency}
-                      onValueChange={(value) => handleSelectChange("currency", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ETH">ETH</SelectItem>
-                        <SelectItem value="MATIC">MATIC</SelectItem>
-                        <SelectItem value="SOL">SOL</SelectItem>
-                        <SelectItem value="BNB">BNB</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="mintStart" className="block text-sm font-medium text-gray-700 mb-1">
-                      Mint Start Date
-                    </label>
-                    <Input
-                      id="mintStart"
+                  
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Price (ETH) *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.001"
+                            min="0"
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value);
+                              if (!isNaN(value) && value >= 0) {
+                                field.onChange(value);
+                              }
+                            }}
+                            value={field.value}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
                       name="mintStart"
-                      type="datetime-local"
-                      value={formData.mintStart}
-                      onChange={handleInputChange}
-                      required
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mint Start Date *</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="mintEnd" className="block text-sm font-medium text-gray-700 mb-1">
-                      Mint End Date
-                    </label>
-                    <Input
-                      id="mintEnd"
+                    
+                    <FormField
+                      control={form.control}
                       name="mintEnd"
-                      type="datetime-local"
-                      value={formData.mintEnd}
-                      onChange={handleInputChange}
-                      required
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mint End Date *</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Right Column */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Images</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Banner Image Upload */}
-                <div>
-                  <label htmlFor="bannerImage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Banner Image *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">This wide image will appear at the top of your drop page</p>
-                  <input
-                    ref={bannerInputRef}
-                    type="file"
-                    id="bannerImage"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'bannerImage')}
-                    className="hidden"
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Feature Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="enableWhitelist"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Enable Whitelist</FormLabel>
+                          <FormDescription>
+                            Restrict minting to whitelisted addresses
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
-                  {bannerPreview ? (
-                    <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                      <img 
-                        src={bannerPreview} 
-                        alt="Banner preview"
-                        className="w-full h-40 object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="absolute bottom-2 right-2"
+                  
+                  <FormField
+                    control={form.control}
+                    name="enableSoulbound"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Enable Soulbound</FormLabel>
+                          <FormDescription>
+                            NFTs cannot be transferred after minting
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="enableBurn"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Enable Burn</FormLabel>
+                          <FormDescription>
+                            Allow NFT owners to burn their tokens
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Right Column */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Images</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Banner Image Upload */}
+                  <div>
+                    <FormLabel htmlFor="bannerImage" className="block text-sm font-medium mb-1">
+                      Banner Image *
+                    </FormLabel>
+                    <FormDescription className="mb-2">
+                      This wide image will appear at the top of your drop page
+                    </FormDescription>
+                    <input
+                      ref={bannerInputRef}
+                      type="file"
+                      id="bannerImage"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'bannerImage')}
+                      className="hidden"
+                    />
+                    {bannerPreview ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                        <img 
+                          src={bannerPreview} 
+                          alt="Banner preview"
+                          className="w-full h-40 object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => triggerFileInput(bannerInputRef)}
+                        >
+                          Change Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
                         onClick={() => triggerFileInput(bannerInputRef)}
                       >
-                        Change Image
-                      </Button>
-                    </div>
-                  ) : (
-                    <div 
-                      className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => triggerFileInput(bannerInputRef)}
-                    >
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <Upload className="w-10 h-10 text-gray-400" />
-                        <p className="text-sm text-gray-500">Click to upload banner image</p>
-                        <p className="text-xs text-gray-400">Recommended size: 1400 x 400px</p>
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <Upload className="w-10 h-10 text-gray-400" />
+                          <p className="text-sm text-gray-500">Click to upload banner image</p>
+                          <p className="text-xs text-gray-400">Recommended size: 1400 x 400px</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Display Image Upload (Drop Logo) */}
-                <div>
-                  <label htmlFor="displayImage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Drop Logo *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">This is the main logo/icon representing your drop collection</p>
-                  <input
-                    ref={displayImageInputRef}
-                    type="file"
-                    id="displayImage"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'displayImage')}
-                    className="hidden"
-                  />
-                  {displayImagePreview ? (
-                    <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                      <img 
-                        src={displayImagePreview} 
-                        alt="Display image preview"
-                        className="w-full h-64 object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="absolute bottom-2 right-2"
-                        onClick={() => triggerFileInput(displayImageInputRef)}
+                    )}
+                    {form.formState.errors.bannerImage && (
+                      <p className="text-sm text-red-500 mt-1">Banner image is required</p>
+                    )}
+                  </div>
+                  
+                  {/* Drop Logo Upload */}
+                  <div>
+                    <FormLabel htmlFor="dropLogo" className="block text-sm font-medium mb-1">
+                      Drop Logo *
+                    </FormLabel>
+                    <FormDescription className="mb-2">
+                      This is the main logo/icon representing your drop collection
+                    </FormDescription>
+                    <input
+                      ref={dropLogoInputRef}
+                      type="file"
+                      id="dropLogo"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'dropLogo')}
+                      className="hidden"
+                    />
+                    {dropLogoPreview ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                        <img 
+                          src={dropLogoPreview} 
+                          alt="Drop logo preview"
+                          className="w-full h-64 object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => triggerFileInput(dropLogoInputRef)}
+                        >
+                          Change Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => triggerFileInput(dropLogoInputRef)}
                       >
-                        Change Image
-                      </Button>
-                    </div>
-                  ) : (
-                    <div 
-                      className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => triggerFileInput(displayImageInputRef)}
-                    >
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <ImageIcon className="w-10 h-10 text-gray-400" />
-                        <p className="text-sm text-gray-500">Click to upload drop logo</p>
-                        <p className="text-xs text-gray-400">This will be shown in listings and cards</p>
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <ImageIcon className="w-10 h-10 text-gray-400" />
+                          <p className="text-sm text-gray-500">Click to upload drop logo</p>
+                          <p className="text-xs text-gray-400">This will be shown in listings and cards</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Contract Image Upload (Mint Display) */}
-                <div>
-                  <label htmlFor="contractImage" className="block text-sm font-medium text-gray-700 mb-1">
-                    Mint Display Image *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">This image will be displayed during the minting process</p>
-                  <input
-                    ref={contractImageInputRef}
-                    type="file"
-                    id="contractImage"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'contractImage')}
-                    className="hidden"
-                  />
-                  {contractImagePreview ? (
-                    <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                      <img 
-                        src={contractImagePreview} 
-                        alt="Contract image preview"
-                        className="w-full h-64 object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="absolute bottom-2 right-2"
-                        onClick={() => triggerFileInput(contractImageInputRef)}
+                    )}
+                    {form.formState.errors.dropLogo && (
+                      <p className="text-sm text-red-500 mt-1">Drop logo is required</p>
+                    )}
+                  </div>
+                  
+                  {/* Mint Display Image Upload */}
+                  <div>
+                    <FormLabel htmlFor="mintDisplayImage" className="block text-sm font-medium mb-1">
+                      Mint Display Image *
+                    </FormLabel>
+                    <FormDescription className="mb-2">
+                      This image will be displayed during the minting process
+                    </FormDescription>
+                    <input
+                      ref={mintDisplayImageInputRef}
+                      type="file"
+                      id="mintDisplayImage"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'mintDisplayImage')}
+                      className="hidden"
+                    />
+                    {mintDisplayImagePreview ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                        <img 
+                          src={mintDisplayImagePreview} 
+                          alt="Mint display image preview"
+                          className="w-full h-64 object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => triggerFileInput(mintDisplayImageInputRef)}
+                        >
+                          Change Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => triggerFileInput(mintDisplayImageInputRef)}
                       >
-                        Change Image
-                      </Button>
-                    </div>
-                  ) : (
-                    <div 
-                      className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => triggerFileInput(contractImageInputRef)}
-                    >
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <FileCode className="w-10 h-10 text-gray-400" />
-                        <p className="text-sm text-gray-500">Click to upload mint display image</p>
-                        <p className="text-xs text-gray-400">Users will see this image when minting</p>
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <ImageIcon className="w-10 h-10 text-gray-400" />
+                          <p className="text-sm text-gray-500">Click to upload mint display image</p>
+                          <p className="text-xs text-gray-400">Users will see this image when minting</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {form.formState.errors.mintDisplayImage && (
+                      <p className="text-sm text-red-500 mt-1">Mint display image is required</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <div className="mt-6 flex gap-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate("/dashboard/drops")}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="bg-aura-purple hover:bg-aura-purple-dark text-white font-medium flex-1"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Deploying...
+                    </>
+                  ) : (
+                    "Deploy Drop"
                   )}
-                </div>
-              </CardContent>
-            </Card>
-            
-            <div className="mt-6 flex gap-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => navigate("/dashboard/drops")}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="bg-aura-purple hover:bg-aura-purple-dark text-white font-medium flex-1"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Drop"
-                )}
-              </Button>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </Form>
     </div>
   );
 };

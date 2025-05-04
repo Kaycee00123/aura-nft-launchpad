@@ -19,6 +19,7 @@ import CreateCollection from "./pages/dashboard/CreateCollection";
 import MyDrops from "./pages/dashboard/MyDrops";
 import StatsPage from "./pages/dashboard/StatsPage";
 import AdminPanel from "./pages/AdminPanel";
+import DropSuccessPage from "./pages/dashboard/DropSuccessPage";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="create" element={<CreateDrop />} />
               <Route path="collection/create" element={<CreateCollection />} />
               <Route path="drops" element={<MyDrops />} />
+              <Route path="drops/success" element={<DropSuccessPage />} />
               <Route path="stats" element={<StatsPage />} />
             </Route>
             

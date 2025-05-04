@@ -191,9 +191,9 @@ const Mint = () => {
                           id="quantity"
                           type="number"
                           min="1"
-                          max={availableSupply}
-                          value={quantity}
-                          onChange={(e) => setQuantity(parseInt(e.target.value))}
+                          max={String(availableSupply)}
+                          value={String(quantity)}
+                          onChange={handleQuantityChange}
                           className="max-w-28"
                         />
                         <p className="text-sm text-muted-foreground">
