@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -173,7 +172,6 @@ const CreateDrop = () => {
           toast({
             title: "Logo Image Warning",
             description: "Logo should have a square aspect ratio for best results",
-            variant: "warning",
           });
         }
       } else if (type === 'banner') {
@@ -183,7 +181,6 @@ const CreateDrop = () => {
           toast({
             title: "Banner Image Warning",
             description: "Banner should have a wide aspect ratio (around 3:1) for best results",
-            variant: "warning",
           });
         }
       }
