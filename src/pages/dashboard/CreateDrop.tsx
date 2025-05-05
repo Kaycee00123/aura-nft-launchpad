@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader, Upload, ImageIcon, Info, Image as ImageIcon2, FileImage } from "lucide-react";
+import { Loader, Upload, ImageIcon, Info, Image as ImageIcon2, FileImage, AlertCircle } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 // Define max file size (5MB)
@@ -44,6 +45,9 @@ const dropFormSchema = z.object({
   mintStart: z.string().min(1, "Mint start time is required"),
   mintEnd: z.string().min(1, "Mint end time is required"),
   enableWhitelist: z.boolean().default(false),
+  whitelistAddresses: z.string().optional(),
+  whitelistMintStart: z.string().optional(),
+  whitelistMintEnd: z.string().optional(),
   enableSoulbound: z.boolean().default(false),
   enableBurn: z.boolean().default(false),
   singleDropImage: z.instanceof(File).optional(),
@@ -83,6 +87,36 @@ const dropFormSchema = z.object({
 }, {
   message: "Base URI is required for Full Collection type",
   path: ["baseUri"],
+})
+.refine((data) => {
+  // If enableWhitelist is true, whitelistAddresses is required
+  if (data.enableWhitelist) {
+    return !!data.whitelistAddresses && data.whitelistAddresses.trim() !== "";
+  }
+  return true;
+}, {
+  message: "Whitelist addresses are required when whitelist is enabled",
+  path: ["whitelistAddresses"],
+})
+.refine((data) => {
+  // If enableWhitelist is true, whitelist mint dates are required
+  if (data.enableWhitelist) {
+    return !!data.whitelistMintStart && data.whitelistMintStart.trim() !== "";
+  }
+  return true;
+}, {
+  message: "Whitelist mint start time is required when whitelist is enabled",
+  path: ["whitelistMintStart"],
+})
+.refine((data) => {
+  // If enableWhitelist is true, whitelist mint dates are required
+  if (data.enableWhitelist) {
+    return !!data.whitelistMintEnd && data.whitelistMintEnd.trim() !== "";
+  }
+  return true;
+}, {
+  message: "Whitelist mint end time is required when whitelist is enabled",
+  path: ["whitelistMintEnd"],
 });
 
 type DropFormValues = z.infer<typeof dropFormSchema>;
@@ -119,6 +153,9 @@ const CreateDrop = () => {
       mintStart: "",
       mintEnd: "",
       enableWhitelist: false,
+      whitelistAddresses: "",
+      whitelistMintStart: "",
+      whitelistMintEnd: "",
       enableSoulbound: false,
       enableBurn: false,
     },
@@ -126,6 +163,9 @@ const CreateDrop = () => {
 
   // Watch the dropType to conditionally render form fields
   const dropType = form.watch("dropType");
+  
+  // Watch the enableWhitelist toggle to conditionally render whitelist fields
+  const enableWhitelist = form.watch("enableWhitelist");
 
   // Generic file handling function
   const handleFileChange = (
@@ -219,6 +259,24 @@ const CreateDrop = () => {
     const mockMetadataCid = "Qm" + Math.random().toString(36).substring(2, 15);
     return `ipfs://${mockMetadataCid}`;
   };
+  
+  // Helper to validate whitelist addresses
+  const validateWhitelistAddresses = (addresses: string): boolean => {
+    if (!addresses.trim()) return false;
+    
+    // Split by commas, newlines, or spaces
+    const addressList = addresses
+      .split(/[\s,]+/)
+      .map(addr => addr.trim())
+      .filter(addr => addr.length > 0);
+      
+    // Check if each address is a valid Ethereum address
+    const validAddresses = addressList.every(addr => 
+      /^0x[a-fA-F0-9]{40}$/.test(addr)
+    );
+    
+    return addressList.length > 0 && validAddresses;
+  };
 
   // Form submission handler
   const onSubmit = async (values: DropFormValues) => {
@@ -226,8 +284,21 @@ const CreateDrop = () => {
     let baseUriToUse = "";
     let logoUri = "";
     let bannerUri = "";
-
+    
     try {
+      // Validate whitelist addresses if enabled
+      if (values.enableWhitelist && values.whitelistAddresses) {
+        if (!validateWhitelistAddresses(values.whitelistAddresses)) {
+          toast({
+            title: "Invalid Whitelist",
+            description: "One or more addresses are not valid Ethereum addresses.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
       // Upload logo if provided
       if (values.logoImage) {
         setLogoUploadStatus('uploading');
@@ -319,8 +390,13 @@ const CreateDrop = () => {
         description: "Your NFT drop has been deployed to the blockchain.",
       });
       
+      // Include whitelist data in the navigation if enabled
+      const whitelistData = values.enableWhitelist ? 
+        `&whitelistEnabled=true&whitelistStart=${encodeURIComponent(values.whitelistMintStart || '')}` +
+        `&whitelistEnd=${encodeURIComponent(values.whitelistMintEnd || '')}` : '';
+      
       // Navigate to success page with contract address and image URIs
-      navigate(`/dashboard/drops/success?address=${contractAddress}&logoUri=${encodeURIComponent(logoUri)}&bannerUri=${encodeURIComponent(bannerUri)}`);
+      navigate(`/dashboard/drops/success?address=${contractAddress}&logoUri=${encodeURIComponent(logoUri)}&bannerUri=${encodeURIComponent(bannerUri)}${whitelistData}`);
     } catch (error) {
       console.error("Error creating drop:", error);
       toast({
@@ -686,6 +762,71 @@ const CreateDrop = () => {
                     )}
                   />
                   
+                  {enableWhitelist && (
+                    <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+                      <FormField
+                        control={form.control}
+                        name="whitelistAddresses"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Whitelist Addresses *</FormLabel>
+                            <FormDescription>
+                              Enter Ethereum addresses (one per line or comma-separated)
+                            </FormDescription>
+                            <FormControl>
+                              <Textarea
+                                placeholder="0x1234...5678&#10;0xabcd...efgh"
+                                className="min-h-[120px] font-mono text-sm"
+                                {...field}
+                              />
+                            </FormControl>
+                            <div className="flex items-start gap-2 text-amber-600 mt-2 text-sm">
+                              <AlertCircle className="h-4 w-4 mt-0.5" />
+                              <p>Each address must be a valid Ethereum address starting with 0x</p>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="whitelistMintStart"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Whitelist Mint Start *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="datetime-local"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="whitelistMintEnd"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Whitelist Mint End *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="datetime-local"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
                   <FormField
                     control={form.control}
                     name="enableSoulbound"
@@ -819,6 +960,21 @@ const CreateDrop = () => {
                       </div>
                     </div>
                   </div>
+                  
+                  {enableWhitelist && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mt-4">
+                      <div className="flex gap-2">
+                        <AlertCircle className="h-5 w-5 text-yellow-500" />
+                        <div>
+                          <h4 className="font-medium text-yellow-700">Whitelist Information</h4>
+                          <p className="text-sm text-yellow-600 mt-1">
+                            With whitelist enabled, only addresses you specify can mint during the whitelist period.
+                            After the whitelist period ends, public minting will begin according to your main mint schedule.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
