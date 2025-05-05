@@ -1,28 +1,36 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockNFTDrops, NFTDrop } from "@/lib/mock-data";
 import { useWallet } from "@/context/WalletContext";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Wallet, 
-  ArrowRight, 
   Link as LinkIcon,
   Users,
   Lock,
   Unlock,
   Coins,
-  Calendar
+  Calendar,
+  Loader
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ethers } from "ethers";
+import { ipfsToHttpURL } from "@/lib/ipfs/ipfs-service";
+import { getDropContract } from "@/lib/contracts/contract-utils";
 
 const shortenAddress = (address: string | undefined): string => {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+// Function to format ETH values consistently
+const formatEth = (value: string): string => {
+  return parseFloat(value).toFixed(4);
 };
 
 // Create a proper type for the drop data from contract
@@ -340,16 +348,6 @@ const DropDetails = () => {
     }
   };
 
-  const isActive = dropStatus === "active";
-  const isMintable = isActive && isConnected;
-  const mintProgress = (drop.totalSupply / drop.maxSupply) * 100;
-  
-  // Additional properties for the drop (mock data)
-  const dropSymbol = drop.name.split(' ').map(word => word[0]).join('').toUpperCase();
-  const isSoulbound = Math.random() > 0.7; 
-  const isWhitelistEnabled = Math.random() > 0.5; 
-  const contractAddress = "0x" + Math.random().toString(16).slice(2, 42); 
-  
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -384,12 +382,6 @@ const DropDetails = () => {
   const isActive = dropStatus === "active";
   const isMintable = isActive && isConnected;
   const mintProgress = (drop.totalSupply / drop.maxSupply) * 100;
-  
-  // Additional properties for the drop (mock data)
-  const dropSymbol = drop.name.split(' ').map(word => word[0]).join('').toUpperCase();
-  const isSoulbound = Math.random() > 0.7; 
-  const isWhitelistEnabled = Math.random() > 0.5; 
-  const contractAddress = "0x" + Math.random().toString(16).slice(2, 42); 
   
   return (
     <div className="min-h-screen flex flex-col bg-white">

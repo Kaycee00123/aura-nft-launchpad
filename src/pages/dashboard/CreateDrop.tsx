@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/context/WalletContext";
 import { uploadFileToIPFS, uploadJSONToIPFS, ipfsToHttpURL } from "@/lib/ipfs/ipfs-service";
-import { getFactoryContract, generateMerkleData } from "@/lib/contracts/contract-utils";
+import { getFactoryContract, generateMerkleData, getDropContract } from "@/lib/contracts/contract-utils";
 import { ethers } from "ethers";
 import { Loader } from "lucide-react";
 
@@ -435,3 +436,39 @@ const CreateDrop = () => {
                 </div>
               )}
             </div>
+
+            {/* Create drop button */}
+            <div className="flex justify-end mt-6">
+              <Button 
+                type="submit" 
+                disabled={creatingContract}
+                className="bg-aura-purple hover:bg-aura-purple-dark"
+              >
+                {creatingContract ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" /> 
+                    {contractCreationStep || "Creating..."}
+                  </>
+                ) : (
+                  "Create NFT Drop"
+                )}
+              </Button>
+            </div>
+
+            {/* Uploading indicator */}
+            {uploadingToIPFS && (
+              <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
+                <div className="flex items-center text-blue-700">
+                  <Loader className="mr-2 h-4 w-4 animate-spin" /> 
+                  <span>Uploading files to IPFS... This may take a few moments.</span>
+                </div>
+              </div>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default CreateDrop;
