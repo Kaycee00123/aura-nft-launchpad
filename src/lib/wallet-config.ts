@@ -88,13 +88,12 @@ export const supportedChains = [
   core,
 ];
 
-// This is a placeholder - replace with your actual project ID from WalletConnect Cloud
-// Get one at https://cloud.walletconnect.com/
+// Updated project ID from WalletConnect Cloud
 const projectId = '6f7da8ecb5707a7c8340093786426533';
 
 // Create wagmi config
 export const config = createConfig({
-  chains: [mainnet, sepolia, base, arbitrum, abstractMainnet, abstractTestnet, monadTestnet, core],
+  chains: supportedChains,
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),
