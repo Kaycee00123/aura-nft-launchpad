@@ -1,207 +1,246 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, ImageIcon } from "lucide-react";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-
-interface DropDetails {
-  contractAddress: string;
-  logoUri?: string;
-  bannerUri?: string;
-}
+import { useWallet } from "@/context/WalletContext";
+import { NFTDropInterface } from "@/lib/contracts/interfaces";
+import { getDropContract } from "@/lib/contracts/contract-utils";
+import { ipfsToHttpURL } from "@/lib/ipfs/ipfs-service";
+import { Copy, Share, ExternalLink, Loader } from "lucide-react";
+import { ethers } from "ethers";
 
 const DropSuccessPage = () => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [dropDetails, setDropDetails] = useState<DropDetails>({
-    contractAddress: "",
-  });
-  const [copied, setCopied] = useState(false);
+  const { wallet, isConnected } = useWallet();
+
+  const [dropAddress, setDropAddress] = useState<string>("");
+  const [dropDetails, setDropDetails] = useState<{
+    name: string;
+    symbol: string;
+    logoURI: string;
+    creator: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get parameters from URL query params
+    // Extract drop address from URL query params
     const params = new URLSearchParams(location.search);
     const address = params.get("address");
-    const logoUri = params.get("logoUri") || "";
-    const bannerUri = params.get("bannerUri") || "";
-    
-    if (!address) {
-      navigate("/dashboard/create");
-      return;
-    }
-    
-    setDropDetails({
-      contractAddress: address,
-      logoUri: logoUri || undefined,
-      bannerUri: bannerUri || undefined,
-    });
-  }, [location.search, navigate]);
 
-  const handleCopyAddress = () => {
-    navigator.clipboard.writeText(dropDetails.contractAddress);
-    setCopied(true);
-    
+    if (address && ethers.utils.isAddress(address)) {
+      setDropAddress(address);
+      fetchDropDetails(address);
+    } else {
+      setLoading(false);
+    }
+  }, [location]);
+
+  const fetchDropDetails = async (address: string) => {
+    try {
+      if (!isConnected || !wallet.address) {
+        setLoading(false);
+        return;
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      
+      const dropContract: NFTDropInterface = getDropContract(address, signer);
+      
+      const [name, symbol, logoURI, creator] = await Promise.all([
+        dropContract.name(),
+        dropContract.symbol(),
+        dropContract.logoURI(),
+        dropContract.creator(),
+      ]);
+      
+      setDropDetails({
+        name,
+        symbol,
+        logoURI: ipfsToHttpURL(logoURI),
+        creator
+      });
+    } catch (error) {
+      console.error("Error fetching drop details:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load drop details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyDropLink = () => {
+    const url = `${window.location.origin}/drop/${dropAddress}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link Copied",
+      description: "Drop link copied to clipboard"
+    });
+  };
+
+  const copyContractAddress = () => {
+    navigator.clipboard.writeText(dropAddress);
     toast({
       title: "Address Copied",
-      description: "Contract address copied to clipboard",
+      description: "Contract address copied to clipboard"
     });
-    
-    // Reset the copied state after 3 seconds
-    setTimeout(() => {
-      setCopied(false);
-    }, 3000);
   };
 
-  const handleCreateAnother = () => {
-    navigate("/dashboard/create");
+  const shareOnTwitter = () => {
+    const url = `${window.location.origin}/drop/${dropAddress}`;
+    const text = `Check out my new NFT drop: ${dropDetails?.name || "NFT Drop"} on NFT Launchpad!`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
   };
 
-  const handleViewDrop = () => {
-    // In a real app, we would navigate to the drop details page
-    navigate(`/drop/new-drop-${dropDetails.contractAddress.substring(0, 6)}`);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (!dropAddress || !dropDetails) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold">Drop Not Found</h2>
+        <p className="text-gray-500 mt-2">Could not find details for the created drop</p>
+        <Button onClick={() => navigate("/dashboard/create")} className="mt-6">
+          Create New Drop
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          <div className="mx-auto bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <Check className="h-8 w-8 text-green-600" />
+    <div className="max-w-3xl mx-auto py-8 px-4">
+      <Card className="border-green-100 bg-green-50">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+              <Check className="h-8 w-8" />
+            </div>
           </div>
-          <CardTitle className="text-2xl">Drop Created Successfully!</CardTitle>
+          <CardTitle className="text-center text-2xl">Drop Created Successfully!</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-gray-500">
-            Your NFT drop has been successfully deployed to the blockchain.
+        <CardContent>
+          <p className="text-center text-gray-600 mb-8">
+            Your NFT drop has been created and is now ready for minting.
           </p>
           
-          {/* Display collection branding if available */}
-          {(dropDetails.logoUri || dropDetails.bannerUri) && (
-            <div className="space-y-4">
-              {dropDetails.bannerUri && (
-                <div className="rounded-lg overflow-hidden">
-                  <AspectRatio ratio={3/1}>
-                    <div className="w-full h-full bg-gray-100 relative">
-                      {dropDetails.bannerUri.startsWith("ipfs://") ? (
-                        <div className="flex items-center justify-center h-full">
-                          <p className="text-sm text-gray-500">Banner stored at: {dropDetails.bannerUri}</p>
-                        </div>
-                      ) : (
-                        <img 
-                          src={dropDetails.bannerUri} 
-                          alt="Collection Banner"
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                  </AspectRatio>
-                </div>
-              )}
-              
-              {dropDetails.logoUri && (
-                <div className="flex justify-center">
-                  <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md bg-white">
-                    {dropDetails.logoUri.startsWith("ipfs://") ? (
-                      <div className="flex items-center justify-center h-full bg-gray-100">
-                        <ImageIcon className="w-8 h-8 text-gray-400" />
-                      </div>
-                    ) : (
-                      <img 
-                        src={dropDetails.logoUri} 
-                        alt="Collection Logo"
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="flex items-center justify-center mb-8">
+            {dropDetails.logoURI ? (
+              <img 
+                src={dropDetails.logoURI} 
+                alt={dropDetails.name} 
+                className="w-32 h-32 object-contain rounded-lg border border-gray-200"
+              />
+            ) : (
+              <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                <span className="text-gray-400">No Logo</span>
+              </div>
+            )}
+          </div>
           
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-500 mb-2">Contract Address</p>
-            <div className="flex items-center justify-between gap-2">
-              <code className="bg-gray-100 px-3 py-2 rounded text-sm flex-1 text-left overflow-x-auto">
-                {dropDetails.contractAddress}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyAddress}
-                className="flex-shrink-0"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copy
-                  </>
-                )}
-              </Button>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium">{dropDetails.name} ({dropDetails.symbol})</h3>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Contract Address</span>
+                <div className="flex items-center">
+                  <span className="font-mono text-sm mr-2 truncate max-w-[200px]">
+                    {dropAddress}
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0" 
+                    onClick={copyContractAddress}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Drop Link</span>
+                <div className="flex items-center">
+                  <span className="font-mono text-sm mr-2 truncate max-w-[200px]">
+                    {`${window.location.origin}/drop/${dropAddress}`}
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0" 
+                    onClick={copyDropLink}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
           
-          {/* Display image URIs if available */}
-          {(dropDetails.logoUri || dropDetails.bannerUri) && (
-            <div className="bg-gray-50 p-4 rounded-lg text-left space-y-2">
-              {dropDetails.logoUri && (
-                <div>
-                  <p className="text-sm text-gray-500">Logo URI</p>
-                  <code className="bg-gray-100 px-3 py-1 rounded text-xs block overflow-x-auto">
-                    {dropDetails.logoUri}
-                  </code>
-                </div>
-              )}
-              
-              {dropDetails.bannerUri && (
-                <div>
-                  <p className="text-sm text-gray-500">Banner URI</p>
-                  <code className="bg-gray-100 px-3 py-1 rounded text-xs block overflow-x-auto">
-                    {dropDetails.bannerUri}
-                  </code>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <div className="flex flex-col gap-3 pt-2">
+          <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <Button 
-              onClick={handleViewDrop}
-              className="bg-aura-purple hover:bg-aura-purple-dark w-full"
+              onClick={() => navigate(`/drop/${dropAddress}`)} 
+              className="flex-1"
             >
-              <ArrowRight className="mr-2 h-4 w-4" />
-              View Drop
+              View Drop Page
+            </Button>
+            
+            <Button 
+              onClick={() => navigate(`/mint/${dropAddress}`)} 
+              className="flex-1"
+            >
+              Go To Mint Page
+            </Button>
+          </div>
+          
+          <div className="mt-4 flex gap-4">
+            <Button 
+              variant="outline" 
+              onClick={shareOnTwitter} 
+              className="flex-1"
+            >
+              <Share className="mr-2 h-4 w-4" />
+              Share on Twitter
             </Button>
             
             <Button 
               variant="outline" 
-              onClick={handleCreateAnother}
-              className="w-full"
+              onClick={() => {
+                const explorerUrl = wallet.chain?.blockExplorers?.default.url;
+                if (explorerUrl) {
+                  window.open(`${explorerUrl}/address/${dropAddress}`, "_blank");
+                }
+              }} 
+              className="flex-1"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Create Another Drop
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View on Explorer
             </Button>
-            
-            <a 
-              href={`https://etherscan.io/address/${dropDetails.contractAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gray-500 hover:text-aura-purple flex items-center justify-center gap-1 mt-2"
-            >
-              View on Etherscan
-              <ExternalLink className="h-3 w-3" />
-            </a>
           </div>
         </CardContent>
       </Card>
+      
+      <div className="text-center mt-8">
+        <Button variant="ghost" onClick={() => navigate("/dashboard/drops")}>
+          Back to My Drops
+        </Button>
+      </div>
     </div>
   );
 };

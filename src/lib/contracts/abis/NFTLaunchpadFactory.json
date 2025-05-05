@@ -1,0 +1,94 @@
+
+[
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxSupply",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_mintPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_isSoulbound",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "_canBurn",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "_baseTokenURI",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_logoURI",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_bannerURI",
+        "type": "string"
+      }
+    ],
+    "name": "createDrop",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_creator",
+        "type": "address"
+      }
+    ],
+    "name": "getCreatorDrops",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPlatformFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

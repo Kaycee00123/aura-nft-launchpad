@@ -25,113 +25,308 @@ const shortenAddress = (address: string | undefined): string => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
+// Create a proper type for the drop data from contract
+interface NFTDrop {
+  name: string;
+  symbol: string;
+  totalSupply: number;
+  maxSupply: number;
+  price: string;
+  mintStart: Date;
+  mintEnd: Date;
+  isSoulbound: boolean;
+  isWhitelistEnabled: boolean;
+  creator: string;
+  logoURI: string;
+  bannerURI: string;
+  contractAddress: string;
+  isLoaded: boolean;
+}
+
+const initialDropState: NFTDrop = {
+  name: "",
+  symbol: "",
+  totalSupply: 0,
+  maxSupply: 0,
+  price: "0",
+  mintStart: new Date(),
+  mintEnd: new Date(),
+  isSoulbound: false,
+  isWhitelistEnabled: false,
+  creator: "",
+  logoURI: "",
+  bannerURI: "",
+  contractAddress: "",
+  isLoaded: false
+};
+
 const DropDetails = () => {
   const { slug } = useParams<{ slug: string }>();
   const { wallet, isConnected, connectWallet } = useWallet();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [drop, setDrop] = useState<NFTDrop | null>(null);
+  const [drop, setDrop] = useState<NFTDrop>(initialDropState);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
   const [isMinting, setIsMinting] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => {
-    // Find drop by slug
-    const foundDrop = mockNFTDrops.find((d) => d.slug === slug);
-    if (foundDrop) {
-      setDrop(foundDrop);
-      setSelectedImage(foundDrop.bannerImage);
-      
-      // Check if current user is the creator
-      if (isConnected && wallet?.address) {
-        // This would be a real blockchain check in a production app
-        // For now, we'll simulate it with a mock check
-        setIsCreator(Math.random() > 0.5); 
-      }
-    }
+    fetchDropDetails();
   }, [slug, isConnected, wallet?.address]);
+
+  const fetchDropDetails = async () => {
+    if (!slug || !ethers.utils.isAddress(slug)) {
+      toast({
+        title: "Invalid Address",
+        description: "The provided contract address is not valid",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Connect to provider if wallet is connected
+      let provider;
+      let signer;
+      
+      if (isConnected && window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+      } else {
+        // Use a read-only provider if wallet is not connected
+        // For now, we'll just skip loading contract data if not connected
+        setLoading(false);
+        return;
+      }
+
+      // Get drop contract
+      const dropContract = getDropContract(slug, signer);
+
+      // Fetch basic info
+      const [
+        name,
+        symbol,
+        totalSupply,
+        maxSupply,
+        mintPrice,
+        mintStart,
+        mintEnd,
+        isSoulbound,
+        isWhitelistEnabled,
+        creator,
+        logoURI,
+        bannerURI
+      ] = await Promise.all([
+        dropContract.name(),
+        dropContract.symbol(),
+        dropContract.totalSupply(),
+        dropContract.maxSupply(),
+        dropContract.mintPrice(),
+        dropContract.mintStart(),
+        dropContract.mintEnd(),
+        dropContract.isSoulbound(),
+        dropContract.isWhitelistEnabled(),
+        dropContract.creator(),
+        dropContract.logoURI(),
+        dropContract.bannerURI()
+      ]);
+
+      // Format the IPFS URIs to HTTP URLs
+      const logoHttpUrl = ipfsToHttpURL(logoURI);
+      const bannerHttpUrl = ipfsToHttpURL(bannerURI);
+
+      // Check if user is creator
+      setIsCreator(
+        wallet?.address?.toLowerCase() === creator.toLowerCase()
+      );
+
+      // Update drop state
+      const dropData: NFTDrop = {
+        name,
+        symbol,
+        totalSupply,
+        maxSupply,
+        price: ethers.utils.formatEther(mintPrice),
+        mintStart: new Date(mintStart),
+        mintEnd: new Date(mintEnd),
+        isSoulbound,
+        isWhitelistEnabled,
+        creator,
+        logoURI: logoHttpUrl,
+        bannerURI: bannerHttpUrl,
+        contractAddress: slug,
+        isLoaded: true
+      };
+      
+      setDrop(dropData);
+      setSelectedImage(dropData.logoURI || dropData.bannerURI);
+
+    } catch (error) {
+      console.error("Error fetching drop:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load drop details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Calculate time left for upcoming drops
-    if (!drop || drop.status !== "upcoming") return;
+    if (!drop || !drop.isLoaded) return;
     
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const mintStartTime = new Date(drop.mintStart).getTime();
-      const distance = mintStartTime - now;
-      
-      if (distance < 0) {
-        clearInterval(timer);
-        setTimeLeft(null);
-        return;
-      }
-      
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-      
-      setTimeLeft({ days, hours, minutes, seconds });
-    }, 1000);
+    const now = new Date().getTime();
+    const mintStart = drop.mintStart.getTime();
     
-    return () => clearInterval(timer);
+    if (mintStart > now) {
+      const timer = setInterval(() => {
+        const currentTime = new Date().getTime();
+        const distance = mintStart - currentTime;
+        
+        if (distance < 0) {
+          clearInterval(timer);
+          setTimeLeft(null);
+          return;
+        }
+        
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        setTimeLeft({ days, hours, minutes, seconds });
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
   }, [drop]);
 
-  const handleMint = async () => {
-    if (!isConnected) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet to mint this NFT",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsMinting(true);
+  const handleMint = () => {
+    navigate(`/mint/${slug}`);
+  };
+
+  const handleManageWhitelist = async () => {
+    if (!isConnected || !wallet.address || !isCreator) return;
     
     try {
-      // Redirect to dedicated mint page instead of minting here
-      navigate(`/mint/${slug}`);
-    } catch (error) {
-      console.error("Navigation error:", error);
-      setIsMinting(false);
+      setActionInProgress('whitelist');
+      
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const dropContract = getDropContract(slug || "", signer);
+      
+      // Toggle whitelist state
+      const tx = await dropContract.setWhitelistEnabled(!drop.isWhitelistEnabled);
+      await tx.wait();
+      
+      toast({
+        title: "Whitelist Updated",
+        description: `Whitelist has been ${drop.isWhitelistEnabled ? 'disabled' : 'enabled'}.`,
+      });
+      
+      // Refresh drop details
+      fetchDropDetails();
+    } catch (error: any) {
+      console.error("Error managing whitelist:", error);
+      toast({
+        title: "Transaction Failed",
+        description: error.message || "Failed to update whitelist status",
+        variant: "destructive",
+      });
+    } finally {
+      setActionInProgress(null);
     }
   };
 
-  const handleManageWhitelist = () => {
-    toast({
-      title: "Manage Whitelist",
-      description: "This feature is coming soon.",
-    });
+  const handleToggleSoulbound = async () => {
+    if (!isConnected || !wallet.address || !isCreator) return;
+    
+    try {
+      setActionInProgress('soulbound');
+      
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const dropContract = getDropContract(slug || "", signer);
+      
+      // Toggle soulbound state
+      const tx = await dropContract.setSoulbound(!drop.isSoulbound);
+      await tx.wait();
+      
+      toast({
+        title: "Soulbound Status Updated",
+        description: `Tokens are now ${!drop.isSoulbound ? 'soulbound' : 'transferable'}.`,
+      });
+      
+      // Refresh drop details
+      fetchDropDetails();
+    } catch (error: any) {
+      console.error("Error toggling soulbound:", error);
+      toast({
+        title: "Transaction Failed",
+        description: error.message || "Failed to update soulbound status",
+        variant: "destructive",
+      });
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
-  const handleToggleSoulbound = () => {
-    toast({
-      title: "Toggle Soulbound",
-      description: "Soulbound status updated successfully.",
-    });
+  const handleWithdraw = async () => {
+    if (!isConnected || !wallet.address || !isCreator) return;
+    
+    try {
+      setActionInProgress('withdraw');
+      
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const dropContract = getDropContract(slug || "", signer);
+      
+      // Withdraw funds
+      const tx = await dropContract.withdraw();
+      await tx.wait();
+      
+      toast({
+        title: "Withdrawal Successful",
+        description: "Funds have been withdrawn to your wallet.",
+      });
+    } catch (error: any) {
+      console.error("Error withdrawing funds:", error);
+      toast({
+        title: "Transaction Failed",
+        description: error.message || "Failed to withdraw funds",
+        variant: "destructive",
+      });
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
-  const handleWithdraw = () => {
-    toast({
-      title: "Withdraw Funds",
-      description: "Funds have been withdrawn to your wallet.",
-    });
+  // Status calculation for drop
+  const getDropStatus = () => {
+    if (!drop.isLoaded) return "loading";
+    
+    const now = new Date();
+    const mintStart = drop.mintStart;
+    const mintEnd = drop.mintEnd;
+    
+    if (now < mintStart) {
+      return "upcoming";
+    } else if (now <= mintEnd) {
+      return "active";
+    } else {
+      return "ended";
+    }
   };
 
-  if (!drop) {
-    return (
-      <div className="min-h-screen flex flex-col bg-white">
-        <Header />
-        <main className="flex-grow flex items-center justify-center">
-          <h1 className="text-2xl font-semibold text-gray-600">Drop not found</h1>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
+  // Utils
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -145,12 +340,53 @@ const DropDetails = () => {
     }
   };
 
-  const isActive = drop.status === "active";
+  const isActive = dropStatus === "active";
   const isMintable = isActive && isConnected;
-  const mintProgress = (drop.minted / drop.supply) * 100;
+  const mintProgress = (drop.totalSupply / drop.maxSupply) * 100;
   
   // Additional properties for the drop (mock data)
-  const dropSymbol = drop.title.split(' ').map(word => word[0]).join('').toUpperCase();
+  const dropSymbol = drop.name.split(' ').map(word => word[0]).join('').toUpperCase();
+  const isSoulbound = Math.random() > 0.7; 
+  const isWhitelistEnabled = Math.random() > 0.5; 
+  const contractAddress = "0x" + Math.random().toString(16).slice(2, 42); 
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-white">
+        <Header />
+        <main className="flex-grow flex items-center justify-center">
+          <Loader className="h-8 w-8 animate-spin text-gray-500" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!drop.isLoaded) {
+    return (
+      <div className="min-h-screen flex flex-col bg-white">
+        <Header />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold text-gray-600">Drop not found</h1>
+            <p className="mt-2 text-gray-500">The contract address may be invalid or the drop does not exist.</p>
+            <Button onClick={() => navigate("/explore")} className="mt-4">
+              Explore Drops
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const dropStatus = getDropStatus();
+  const isActive = dropStatus === "active";
+  const isMintable = isActive && isConnected;
+  const mintProgress = (drop.totalSupply / drop.maxSupply) * 100;
+  
+  // Additional properties for the drop (mock data)
+  const dropSymbol = drop.name.split(' ').map(word => word[0]).join('').toUpperCase();
   const isSoulbound = Math.random() > 0.7; 
   const isWhitelistEnabled = Math.random() > 0.5; 
   const contractAddress = "0x" + Math.random().toString(16).slice(2, 42); 
@@ -161,11 +397,17 @@ const DropDetails = () => {
       
       {/* Banner */}
       <div className="relative w-full h-64 md:h-96 overflow-hidden bg-gray-100">
-        <img 
-          src={drop.bannerImage} 
-          alt={`${drop.title} banner`} 
-          className="w-full h-full object-cover"
-        />
+        {drop.bannerURI ? (
+          <img 
+            src={drop.bannerURI} 
+            alt={`${drop.name} banner`} 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <p className="text-gray-400">No banner image</p>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
       </div>
       
@@ -188,42 +430,50 @@ const DropDetails = () => {
           <div className="md:col-span-2">
             {/* Main Image */}
             <div className="bg-white rounded-lg overflow-hidden shadow-md mb-6">
-              <img 
-                src={selectedImage} 
-                alt={drop.title} 
-                className="w-full h-auto object-contain"
-              />
+              {selectedImage ? (
+                <img 
+                  src={selectedImage} 
+                  alt={drop.name} 
+                  className="w-full h-auto object-contain"
+                />
+              ) : (
+                <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                  <p className="text-gray-400">No image available</p>
+                </div>
+              )}
             </div>
             
             {/* Image Gallery */}
             <div className="flex gap-3 overflow-x-auto pb-4">
-              <div
-                className={`min-w-24 h-24 cursor-pointer rounded-md overflow-hidden ${
-                  selectedImage === drop.bannerImage ? "ring-2 ring-aura-purple" : ""
-                }`}
-                onClick={() => setSelectedImage(drop.bannerImage)}
-              >
-                <img 
-                  src={drop.bannerImage} 
-                  alt={`${drop.title} thumbnail`} 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {drop.gallery.map((image, index) => (
+              {drop.logoURI && (
                 <div
-                  key={index}
                   className={`min-w-24 h-24 cursor-pointer rounded-md overflow-hidden ${
-                    selectedImage === image ? "ring-2 ring-aura-purple" : ""
+                    selectedImage === drop.logoURI ? "ring-2 ring-aura-purple" : ""
                   }`}
-                  onClick={() => setSelectedImage(image)}
+                  onClick={() => setSelectedImage(drop.logoURI)}
                 >
                   <img 
-                    src={image} 
-                    alt={`${drop.title} thumbnail ${index + 1}`} 
+                    src={drop.logoURI} 
+                    alt={`${drop.name} logo`} 
                     className="w-full h-full object-cover"
                   />
                 </div>
-              ))}
+              )}
+              
+              {drop.bannerURI && (
+                <div
+                  className={`min-w-24 h-24 cursor-pointer rounded-md overflow-hidden ${
+                    selectedImage === drop.bannerURI ? "ring-2 ring-aura-purple" : ""
+                  }`}
+                  onClick={() => setSelectedImage(drop.bannerURI)}
+                >
+                  <img 
+                    src={drop.bannerURI} 
+                    alt={`${drop.name} banner`} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
             
             {/* Tabs */}
@@ -231,61 +481,46 @@ const DropDetails = () => {
               <Tabs defaultValue="description">
                 <TabsList className="bg-gray-100">
                   <TabsTrigger value="description">Description</TabsTrigger>
-                  <TabsTrigger value="traits">Traits</TabsTrigger>
-                  <TabsTrigger value="utility">Utility</TabsTrigger>
                   <TabsTrigger value="details">Contract Details</TabsTrigger>
                 </TabsList>
+                
                 <TabsContent value="description" className="mt-4 text-gray-700">
-                  <p>{drop.description}</p>
+                  <p>
+                    {drop.name} ({drop.symbol}) is a unique NFT collection on the {wallet.chain?.name || "blockchain"}.
+                    {drop.isSoulbound && " This is a soulbound collection, meaning the NFTs cannot be transferred once minted."}
+                    {drop.isWhitelistEnabled && " This collection has a whitelist requirement for minting."}
+                  </p>
                 </TabsContent>
-                <TabsContent value="traits" className="mt-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {drop.traits.map((trait, index) => (
-                      <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-500">{trait.name}</p>
-                        <p className="font-medium">{trait.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-                <TabsContent value="utility" className="mt-4 text-gray-700">
-                  <p>This NFT collection includes the following utility:</p>
-                  <ul className="list-disc ml-5 mt-2 space-y-1">
-                    <li>Access to exclusive community events</li>
-                    <li>Voting rights for future collection developments</li>
-                    <li>Eligibility for airdrops and future rewards</li>
-                    <li>Premium content access</li>
-                  </ul>
-                </TabsContent>
+                
                 <TabsContent value="details" className="mt-4 text-gray-700">
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500">Contract Address</p>
-                        <p className="font-mono text-sm overflow-hidden overflow-ellipsis">{contractAddress}</p>
+                        <p className="font-mono text-sm overflow-hidden overflow-ellipsis">{drop.contractAddress}</p>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500">Symbol</p>
-                        <p className="font-medium">{dropSymbol}</p>
+                        <p className="font-medium">{drop.symbol}</p>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500">Blockchain</p>
-                        <p className="font-medium">{drop.blockchain}</p>
+                        <p className="font-medium">{wallet.chain?.name || "Unknown"}</p>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-500">Base URI</p>
-                        <p className="font-mono text-sm overflow-hidden overflow-ellipsis">ipfs://Qm...</p>
+                        <p className="text-sm text-gray-500">Creator</p>
+                        <p className="font-mono text-sm overflow-hidden overflow-ellipsis">{shortenAddress(drop.creator)}</p>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg flex items-center space-x-2">
                         <p className="text-sm text-gray-500">Soulbound</p>
-                        <Badge variant={isSoulbound ? "default" : "outline"}>
-                          {isSoulbound ? "Yes" : "No"}
+                        <Badge variant={drop.isSoulbound ? "default" : "outline"}>
+                          {drop.isSoulbound ? "Yes" : "No"}
                         </Badge>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg flex items-center space-x-2">
                         <p className="text-sm text-gray-500">Whitelist</p>
-                        <Badge variant={isWhitelistEnabled ? "default" : "outline"}>
-                          {isWhitelistEnabled ? "Enabled" : "Disabled"}
+                        <Badge variant={drop.isWhitelistEnabled ? "default" : "outline"}>
+                          {drop.isWhitelistEnabled ? "Enabled" : "Disabled"}
                         </Badge>
                       </div>
                     </div>
@@ -299,36 +534,14 @@ const DropDetails = () => {
           <div className="md:col-span-1">
             <div className="bg-white rounded-lg p-6 shadow-md border border-gray-100">
               {/* Status Badge */}
-              <Badge variant="outline" className={`${getStatusColor(drop.status)} border-none mb-4`}>
-                {drop.status.charAt(0).toUpperCase() + drop.status.slice(1)}
+              <Badge variant="outline" className={`${getStatusColor(dropStatus)} border-none mb-4`}>
+                {dropStatus.charAt(0).toUpperCase() + dropStatus.slice(1)}
               </Badge>
               
               {/* Title & Creator */}
-              <h1 className="text-2xl font-bold mb-2">{drop.title}</h1>
+              <h1 className="text-2xl font-bold mb-2">{drop.name}</h1>
               <div className="flex items-center space-x-2 mb-6">
-                <Link to={`/creator/${drop.creator.name.toLowerCase().replace(/\s+/g, '')}`}>
-                  <img 
-                    src={drop.creator.avatar} 
-                    alt={drop.creator.name} 
-                    className="w-6 h-6 rounded-full"
-                  />
-                </Link>
-                <Link to={`/creator/${drop.creator.name.toLowerCase().replace(/\s+/g, '')}`} className="text-gray-700 hover:underline">
-                  by {drop.creator.name}
-                </Link>
-                {drop.creator.verified && (
-                  <svg
-                    className="w-4 h-4 text-blue-500"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
+                <span className="text-gray-700">by {shortenAddress(drop.creator)}</span>
               </div>
               
               {/* Collection Details */}
@@ -340,7 +553,7 @@ const DropDetails = () => {
                         <Coins className="h-4 w-4" />
                         <span>Price</span>
                       </div>
-                      <span className="font-semibold">{drop.price} {drop.currency}</span>
+                      <span className="font-semibold">{formatEth(drop.price)} {wallet.chain?.nativeCurrency.symbol || "ETH"}</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -349,17 +562,17 @@ const DropDetails = () => {
                         <span>Mint Period</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm">{new Date(drop.mintStart).toLocaleDateString()}</div>
-                        <div className="text-sm text-gray-500">to {new Date(drop.mintEnd).toLocaleDateString()}</div>
+                        <div className="text-sm">{drop.mintStart.toLocaleDateString()}</div>
+                        <div className="text-sm text-gray-500">to {drop.mintEnd.toLocaleDateString()}</div>
                       </div>
                     </div>
                     
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2 text-gray-600">
-                        {isSoulbound ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                        {drop.isSoulbound ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                         <span>Transferable</span>
                       </div>
-                      <span>{isSoulbound ? "No" : "Yes"}</span>
+                      <span>{drop.isSoulbound ? "No" : "Yes"}</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -367,7 +580,7 @@ const DropDetails = () => {
                         <Users className="h-4 w-4" />
                         <span>Whitelist</span>
                       </div>
-                      <span>{isWhitelistEnabled ? "Required" : "Public"}</span>
+                      <span>{drop.isWhitelistEnabled ? "Required" : "Public"}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -376,8 +589,8 @@ const DropDetails = () => {
               {/* Mint Progress */}
               <div className="mb-6">
                 <div className="flex justify-between text-sm mb-1">
-                  <span>{drop.minted} minted</span>
-                  <span>{drop.supply} total</span>
+                  <span>{drop.totalSupply} minted</span>
+                  <span>{drop.maxSupply} total</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                   <div
@@ -388,7 +601,7 @@ const DropDetails = () => {
               </div>
               
               {/* Countdown Timer */}
-              {drop.status === "upcoming" && timeLeft && (
+              {dropStatus === "upcoming" && timeLeft && (
                 <div className="mb-6">
                   <p className="text-sm text-gray-500 mb-2">Mint starts in</p>
                   <div className="grid grid-cols-4 gap-2">
@@ -429,7 +642,7 @@ const DropDetails = () => {
                 >
                   {isMinting ? "Redirecting..." : "Mint Now"}
                 </Button>
-              ) : drop.status === "upcoming" ? (
+              ) : dropStatus === "upcoming" ? (
                 <Button 
                   disabled
                   className="w-full bg-gray-300 text-gray-700 py-6 text-lg mb-4 cursor-not-allowed"
@@ -454,36 +667,44 @@ const DropDetails = () => {
                     <Button 
                       variant="outline" 
                       onClick={handleManageWhitelist}
+                      disabled={actionInProgress === 'whitelist'}
                       className="w-full"
                     >
-                      <Users className="mr-2 h-4 w-4" />
-                      Manage Whitelist
+                      {actionInProgress === 'whitelist' ? (
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Users className="mr-2 h-4 w-4" />
+                      )}
+                      {drop.isWhitelistEnabled ? "Disable Whitelist" : "Enable Whitelist"}
                     </Button>
                     
                     <Button 
                       variant="outline" 
                       onClick={handleToggleSoulbound}
+                      disabled={actionInProgress === 'soulbound'}
                       className="w-full"
                     >
-                      {isSoulbound ? (
-                        <>
-                          <Unlock className="mr-2 h-4 w-4" />
-                          Make Transferable
-                        </>
+                      {actionInProgress === 'soulbound' ? (
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      ) : drop.isSoulbound ? (
+                        <Unlock className="mr-2 h-4 w-4" />
                       ) : (
-                        <>
-                          <Lock className="mr-2 h-4 w-4" />
-                          Make Soulbound
-                        </>
+                        <Lock className="mr-2 h-4 w-4" />
                       )}
+                      {drop.isSoulbound ? "Make Transferable" : "Make Soulbound"}
                     </Button>
                     
                     <Button 
                       variant="outline" 
                       onClick={handleWithdraw}
+                      disabled={actionInProgress === 'withdraw'}
                       className="w-full"
                     >
-                      <Coins className="mr-2 h-4 w-4" />
+                      {actionInProgress === 'withdraw' ? (
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Coins className="mr-2 h-4 w-4" />
+                      )}
                       Withdraw Funds
                     </Button>
                   </div>
@@ -495,16 +716,15 @@ const DropDetails = () => {
                 <Button 
                   variant="outline" 
                   className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    const explorerUrl = wallet.chain?.blockExplorers?.default.url;
+                    if (explorerUrl && drop.contractAddress) {
+                      window.open(`${explorerUrl}/address/${drop.contractAddress}`, "_blank");
+                    }
+                  }}
                 >
                   <LinkIcon className="mr-2 h-4 w-4" />
                   View Contract
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
-                >
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  View on OpenSea
                 </Button>
               </div>
             </div>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,21 +6,43 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/context/WalletContext";
-import { Loader } from "lucide-react";
+import { Loader, AlertTriangle, Check } from "lucide-react";
+import { NFTDropInterface } from "@/lib/contracts/interfaces";
+import { getDropContract, formatEth } from "@/lib/contracts/contract-utils";
+import { ipfsToHttpURL } from "@/lib/ipfs/ipfs-service";
+import { ethers } from "ethers";
 
-interface NFTDrop {
+interface DropState {
   name: string;
   symbol: string;
   totalSupply: number;
   maxSupply: number;
-  price: number;
-  mintStart: string;
-  mintEnd: string;
+  price: string;
+  mintStart: Date;
+  mintEnd: Date;
   isSoulbound: boolean;
   isWhitelistEnabled: boolean;
   creator: string;
-  contractAddress: string;
+  logoURI: string;
+  bannerURI: string;
+  isLoaded: boolean;
 }
+
+const initialDropState: DropState = {
+  name: "",
+  symbol: "",
+  totalSupply: 0,
+  maxSupply: 0,
+  price: "0",
+  mintStart: new Date(),
+  mintEnd: new Date(),
+  isSoulbound: false,
+  isWhitelistEnabled: false,
+  creator: "",
+  logoURI: "",
+  bannerURI: "",
+  isLoaded: false
+};
 
 const Mint = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -27,33 +50,90 @@ const Mint = () => {
   const { toast } = useToast();
   const { wallet, isConnected, connectWallet } = useWallet();
   
-  const [drop, setDrop] = useState<NFTDrop | null>(null);
+  const [drop, setDrop] = useState<DropState>(initialDropState);
   const [loading, setLoading] = useState(true);
   const [minting, setMinting] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [whitelistStatus, setWhitelistStatus] = useState<'checking' | 'eligible' | 'not-eligible' | null>(null);
   
   const fetchDropDetails = async () => {
+    if (!slug || !ethers.utils.isAddress(slug)) {
+      toast({
+        title: "Invalid Address",
+        description: "The provided contract address is not valid",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+    
     try {
-      // Mock API call
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock data
-      const mockDrop: NFTDrop = {
-        name: "Sample NFT Collection",
-        symbol: "SAMPLE",
-        totalSupply: 123,
-        maxSupply: 1000,
-        price: 0.05,
-        mintStart: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-        mintEnd: new Date(Date.now() + 604800000).toISOString(), // 7 days from now
-        isSoulbound: false,
-        isWhitelistEnabled: false,
-        creator: "0x1234567890abcdef1234567890abcdef12345678",
-        contractAddress: slug || "0x"
-      };
+      // Return early if wallet is not connected
+      if (!isConnected || !wallet.address) {
+        setLoading(false);
+        return;
+      }
       
-      setDrop(mockDrop);
+      // Connect to provider
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      
+      // Get drop contract
+      const dropContract: NFTDropInterface = getDropContract(slug, signer);
+      
+      // Fetch basic info
+      const [
+        name, 
+        symbol, 
+        totalSupply, 
+        maxSupply,
+        mintPrice,
+        mintStart,
+        mintEnd,
+        isSoulbound,
+        isWhitelistEnabled,
+        creator,
+        logoURI,
+        bannerURI
+      ] = await Promise.all([
+        dropContract.name(),
+        dropContract.symbol(),
+        dropContract.totalSupply(),
+        dropContract.maxSupply(),
+        dropContract.mintPrice(),
+        dropContract.mintStart(),
+        dropContract.mintEnd(),
+        dropContract.isSoulbound(),
+        dropContract.isWhitelistEnabled(),
+        dropContract.creator(),
+        dropContract.logoURI(),
+        dropContract.bannerURI()
+      ]);
+      
+      // Update drop state
+      setDrop({
+        name,
+        symbol,
+        totalSupply,
+        maxSupply,
+        price: ethers.utils.formatEther(mintPrice),
+        mintStart: new Date(mintStart),
+        mintEnd: new Date(mintEnd),
+        isSoulbound,
+        isWhitelistEnabled,
+        creator,
+        logoURI: ipfsToHttpURL(logoURI),
+        bannerURI: ipfsToHttpURL(bannerURI),
+        isLoaded: true
+      });
+      
+      // Check whitelist status if enabled
+      if (isWhitelistEnabled) {
+        checkWhitelistStatus(wallet.address);
+      }
+      
     } catch (error) {
       console.error("Error fetching drop:", error);
       toast({
@@ -66,9 +146,35 @@ const Mint = () => {
     }
   };
   
+  // Connect to wallet and fetch drop details
   useEffect(() => {
-    fetchDropDetails();
-  }, [slug]);
+    if (isConnected && wallet.address) {
+      fetchDropDetails();
+    }
+  }, [slug, isConnected, wallet.address]);
+  
+  const checkWhitelistStatus = async (address: string | undefined) => {
+    if (!address) return;
+    
+    try {
+      setWhitelistStatus('checking');
+      
+      // In a real implementation, you would verify the whitelist status
+      // by checking if the user's address is in the whitelist or
+      // by verifying if they have a valid merkle proof
+      
+      // For now, we'll simulate this check with a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Randomly determine if user is eligible (in real app, this would be actual verification)
+      const isEligible = Math.random() > 0.5;
+      setWhitelistStatus(isEligible ? 'eligible' : 'not-eligible');
+      
+    } catch (error) {
+      console.error("Error checking whitelist status:", error);
+      setWhitelistStatus('not-eligible');
+    }
+  };
   
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
@@ -85,15 +191,35 @@ const Mint = () => {
   };
   
   const mintNFTs = async () => {
-    if (!isConnected || !wallet.address || !drop) return;
+    if (!isConnected || !wallet.address || !drop.isLoaded) return;
     
     try {
       setMinting(true);
-      // Calculate total price
-      const totalPrice = drop.price * quantity;
       
-      // Mock mint transaction
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Connect to provider
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      
+      // Get drop contract
+      const dropContract: NFTDropInterface = getDropContract(slug || "", signer);
+      
+      // Calculate total price
+      const price = ethers.utils.parseEther(drop.price);
+      const totalPrice = price.mul(quantity);
+      
+      // Execute mint transaction
+      let tx;
+      if (drop.isWhitelistEnabled && whitelistStatus === 'eligible') {
+        // In a real implementation, you would fetch the merkle proof for the user
+        // For now, we'll pass an empty array
+        const merkleProof: string[] = [];
+        tx = await dropContract.whitelistMint(quantity, merkleProof, { value: totalPrice });
+      } else {
+        tx = await dropContract.mint(quantity, { value: totalPrice });
+      }
+      
+      // Wait for transaction to confirm
+      await tx.wait();
       
       toast({
         title: "Success!",
@@ -102,11 +228,11 @@ const Mint = () => {
       
       // Refresh drop details to reflect updated supply
       fetchDropDetails();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error minting:", error);
       toast({
         title: "Mint Failed",
-        description: "Transaction was not successful",
+        description: error.message || "Transaction was not successful",
         variant: "destructive",
       });
     } finally {
@@ -115,17 +241,10 @@ const Mint = () => {
   };
   
   const isMintActive = () => {
-    if (!drop) return false;
+    if (!drop.isLoaded) return false;
     
     const now = new Date();
-    const mintStart = new Date(drop.mintStart);
-    const mintEnd = new Date(drop.mintEnd);
-    
-    return now >= mintStart && now <= mintEnd;
-  };
-  
-  const formatETH = (value: number) => {
-    return `${value} ETH`;
+    return now >= drop.mintStart && now <= drop.mintEnd;
   };
 
   if (loading) {
@@ -136,7 +255,7 @@ const Mint = () => {
     );
   }
   
-  if (!drop) {
+  if (!drop.isLoaded) {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold">Drop Not Found</h2>
@@ -156,7 +275,7 @@ const Mint = () => {
   return (
     <div className="container max-w-5xl mx-auto py-8 px-4">
       <div className="mb-6">
-        <Button variant="outline" size="sm" onClick={() => navigate(`/drop/${drop.contractAddress}`)}>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/drop/${slug}`)}>
           ← Back to Drop Details
         </Button>
       </div>
@@ -170,11 +289,18 @@ const Mint = () => {
             </CardHeader>
             <CardContent>
               <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                {/* Replace with actual NFT preview image */}
-                <div className="text-gray-400 text-center p-8">
-                  <div className="text-6xl mb-4">🖼️</div>
-                  <p>NFT Preview</p>
-                </div>
+                {drop.logoURI ? (
+                  <img 
+                    src={drop.logoURI} 
+                    alt={drop.name} 
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="text-gray-400 text-center p-8">
+                    <div className="text-6xl mb-4">🖼️</div>
+                    <p>NFT Preview</p>
+                  </div>
+                )}
               </div>
               
               <div className="mt-4">
@@ -184,7 +310,7 @@ const Mint = () => {
                 </div>
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-gray-500">Price:</span>
-                  <span className="font-medium">{formatETH(drop.price)}</span>
+                  <span className="font-medium">{formatEth(drop.price)} {wallet.chain?.nativeCurrency.symbol || "ETH"}</span>
                 </div>
               </div>
             </CardContent>
@@ -201,19 +327,41 @@ const Mint = () => {
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-gray-500">Price per NFT:</span>
-                  <span className="font-medium">{formatETH(drop.price)}</span>
+                  <span className="font-medium">{formatEth(drop.price)} {wallet.chain?.nativeCurrency.symbol || "ETH"}</span>
                 </div>
                 <div className="flex justify-between mb-1">
                   <span className="text-gray-500">Available:</span>
                   <span className="font-medium">{remainingSupply} / {drop.maxSupply}</span>
                 </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-500">Mint Period:</span>
+                  <span className="font-medium">{drop.mintStart.toLocaleDateString()} - {drop.mintEnd.toLocaleDateString()}</span>
+                </div>
               </div>
               
               {drop.isWhitelistEnabled && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <p className="text-yellow-800 text-sm">
-                    This drop requires whitelist access to mint.
-                  </p>
+                <div className={`p-3 rounded-md ${
+                  whitelistStatus === 'eligible' ? 'bg-green-50 border border-green-200' :
+                  whitelistStatus === 'not-eligible' ? 'bg-red-50 border border-red-200' :
+                  'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <div className="flex items-center">
+                    {whitelistStatus === 'checking' && <Loader className="h-4 w-4 mr-2 animate-spin text-yellow-500" />}
+                    {whitelistStatus === 'eligible' && <Check className="h-4 w-4 mr-2 text-green-500" />}
+                    {whitelistStatus === 'not-eligible' && <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />}
+                    {whitelistStatus === null && <AlertTriangle className="h-4 w-4 mr-2 text-yellow-500" />}
+                    
+                    <p className={`text-sm ${
+                      whitelistStatus === 'eligible' ? 'text-green-800' :
+                      whitelistStatus === 'not-eligible' ? 'text-red-800' :
+                      'text-yellow-800'
+                    }`}>
+                      {whitelistStatus === 'checking' && "Checking whitelist status..."}
+                      {whitelistStatus === 'eligible' && "You are on the whitelist!"}
+                      {whitelistStatus === 'not-eligible' && "You are not on the whitelist"}
+                      {whitelistStatus === null && "This drop requires whitelist access to mint"}
+                    </p>
+                  </div>
                 </div>
               )}
               
@@ -235,20 +383,20 @@ const Mint = () => {
               <div className="bg-gray-50 p-4 rounded-md">
                 <div className="flex justify-between font-medium">
                   <span>Total Price:</span>
-                  <span>{formatETH(drop.price * quantity)}</span>
+                  <span>{formatEth(Number(drop.price) * quantity)} {wallet.chain?.nativeCurrency.symbol || "ETH"}</span>
                 </div>
               </div>
               
               {!isConnected ? (
                 <Button 
                   onClick={connectWallet}
-                  className="w-full bg-aura-purple hover:bg-aura-purple-dark"
+                  className="w-full"
                 >
                   Connect Wallet
                 </Button>
               ) : !isMintActive() ? (
                 <Button disabled className="w-full">
-                  {new Date(drop.mintStart) > new Date() 
+                  {new Date() < drop.mintStart 
                     ? "Mint Not Started Yet" 
                     : "Mint Ended"}
                 </Button>
@@ -256,11 +404,15 @@ const Mint = () => {
                 <Button disabled className="w-full">
                   Sold Out
                 </Button>
+              ) : drop.isWhitelistEnabled && whitelistStatus !== 'eligible' ? (
+                <Button disabled className="w-full">
+                  Not Whitelisted
+                </Button>
               ) : (
                 <Button 
                   onClick={mintNFTs} 
                   disabled={minting || quantity > remainingSupply || quantity === 0}
-                  className="w-full bg-aura-purple hover:bg-aura-purple-dark"
+                  className="w-full"
                 >
                   {minting ? (
                     <>
