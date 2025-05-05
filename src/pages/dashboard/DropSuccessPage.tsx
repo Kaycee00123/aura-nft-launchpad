@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +7,9 @@ import { useWallet } from "@/context/WalletContext";
 import { NFTDropInterface } from "@/lib/contracts/interfaces";
 import { getDropContract } from "@/lib/contracts/contract-utils";
 import { ipfsToHttpURL } from "@/lib/ipfs/ipfs-service";
-import { Copy, Share, ExternalLink, Loader } from "lucide-react";
+import { Copy, Share, ExternalLink, Loader, CheckCircle } from "lucide-react";
 import { ethers } from "ethers";
+import Check from "@/components/icons/Check";
 
 const DropSuccessPage = () => {
   const location = useLocation();
