@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Wallet, Copy, ExternalLink, LogOut } from "lucide-react";
+import { Wallet, Copy, ExternalLink, LogOut, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface WalletButtonProps {
@@ -22,7 +22,7 @@ const shortenAddress = (address: string | undefined): string => {
 };
 
 export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" }) => {
-  const { wallet, isConnected, connectWallet, disconnectWallet } = useWallet();
+  const { wallet, isConnected, connectWallet, disconnectWallet, walletDetected } = useWallet();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -48,16 +48,39 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
     disconnectWallet();
     setIsOpen(false);
   };
+  
+  const handleConnectClick = async () => {
+    if (!walletDetected) {
+      // If no wallet is detected, show instructions
+      toast({
+        variant: "warning",
+        title: "No Wallet Detected",
+        description: "Please install MetaMask or another Web3 wallet extension to continue.",
+      });
+    } else {
+      // If wallet is detected, try to connect
+      await connectWallet();
+    }
+  };
 
   if (!isConnected) {
     return (
       <Button 
         variant={variant} 
         className="font-medium border-aura-purple text-aura-purple hover:bg-aura-purple/10"
-        onClick={connectWallet}
+        onClick={handleConnectClick}
       >
-        <Wallet className="h-4 w-4 mr-2" />
-        Connect Wallet
+        {!walletDetected ? (
+          <>
+            <AlertTriangle className="h-4 w-4 mr-2 text-yellow-500" />
+            Install Wallet
+          </>
+        ) : (
+          <>
+            <Wallet className="h-4 w-4 mr-2" />
+            Connect Wallet
+          </>
+        )}
       </Button>
     );
   }

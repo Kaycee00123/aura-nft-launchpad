@@ -7,7 +7,8 @@ import {
   useDisconnect, 
   useBalance, 
   useChainId,
-  useSwitchChain
+  useSwitchChain,
+  useWalletClient
 } from 'wagmi'
 import { supportedChains } from "@/lib/wallet-config";
 import { type Address } from 'viem'
@@ -26,7 +27,8 @@ type WalletContextType = {
   disconnectWallet: () => void;
   switchToChain: (chainId: number) => Promise<boolean>;
   supportedChains: typeof supportedChains;
-  connectUserWallet: () => Promise<void>; 
+  connectUserWallet: () => Promise<void>;
+  walletDetected: boolean;
 };
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -35,18 +37,42 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [balance, setBalance] = useState<string>("0");
+  const [walletDetected, setWalletDetected] = useState<boolean>(false);
   
   // Wagmi hooks
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { connect, connectors, status: connectStatus } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const { data: walletClient } = useWalletClient();
   
   // Get balance using wagmi hook
   const balanceQuery = useBalance({
     address,
   });
+
+  // Check if a wallet is detected on page load
+  useEffect(() => {
+    const checkWalletAvailability = async () => {
+      // Check if window.ethereum exists (indicates wallet extension is present)
+      const hasExtensionWallet = typeof window !== 'undefined' && 
+                                window.ethereum !== undefined;
+      
+      // Check if any connectors are available and ready
+      const hasConnector = connectors.some(connector => connector.ready);
+      
+      setWalletDetected(hasExtensionWallet || hasConnector);
+      
+      console.log("Wallet detection:", { 
+        hasExtensionWallet, 
+        hasConnector,
+        availableConnectors: connectors.map(c => ({ id: c.id, name: c.name, ready: c.ready }))
+      });
+    };
+    
+    checkWalletAvailability();
+  }, [connectors]);
 
   // Update balance when it changes
   useEffect(() => {
@@ -63,20 +89,35 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       setIsLoading(true);
       
-      // Find the first connector that's ready (usually injected or WalletConnect)
-      const connector = connectors.find(c => c.ready);
+      // Log available connectors for debugging
+      console.log("Available connectors:", connectors.map(c => ({ 
+        id: c.id, 
+        name: c.name, 
+        ready: c.ready 
+      })));
+      
+      // Try injected connector first (MetaMask, etc)
+      const injectedConnector = connectors.find(c => c.id === 'injected' && c.ready);
+      
+      // If no injected connector, try any other ready connector
+      const anyConnector = connectors.find(c => c.ready);
+      
+      // Use the first available connector
+      const connector = injectedConnector || anyConnector;
       
       if (connector) {
+        console.log("Connecting with connector:", connector.name);
         await connect({ connector });
         toast({
           title: "Wallet Connected",
           description: "Your wallet has been connected successfully.",
         });
       } else {
+        console.error("No available connectors found");
         toast({
           variant: "destructive",
           title: "Connection Failed",
-          description: "No available wallet connectors found.",
+          description: "No available wallet connectors found. Please install a wallet extension like MetaMask.",
         });
       }
     } catch (error: any) {
@@ -155,6 +196,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         switchToChain,
         supportedChains,
         connectUserWallet,
+        walletDetected,
       }}
     >
       {children}
@@ -169,3 +211,10 @@ export const useWallet = () => {
   }
   return context;
 };
+
+// Declare ethereum property on window object for TypeScript
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
