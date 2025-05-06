@@ -93,7 +93,7 @@ const projectId = '6f7da8ecb5707a7c8340093786426533';
 
 // Create wagmi config
 export const config = createConfig({
-  chains: supportedChains,
+  chains: [mainnet, sepolia, base, arbitrum, abstractMainnet, abstractTestnet, monadTestnet, core],
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),
