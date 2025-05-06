@@ -5,11 +5,10 @@ import { createWeb3Modal } from '@web3modal/wagmi/react'
 import { injected, walletConnect } from 'wagmi/connectors'
 import { type Chain } from 'wagmi/chains'
 
-// Define custom chains matching our previous structure
+// Define custom chains matching the Chain type structure
 const abstractMainnet: Chain = {
   id: 11124,
   name: 'Abstract Mainnet',
-  network: 'abstract',
   nativeCurrency: {
     decimals: 18,
     name: 'Abstract',
@@ -27,7 +26,6 @@ const abstractMainnet: Chain = {
 const abstractTestnet: Chain = {
   id: 2741,
   name: 'Abstract Testnet',
-  network: 'abstract-testnet',
   nativeCurrency: {
     decimals: 18,
     name: 'Abstract',
@@ -45,7 +43,6 @@ const abstractTestnet: Chain = {
 const monadTestnet: Chain = {
   id: 10143,
   name: 'Monad Testnet',
-  network: 'monad-testnet',
   nativeCurrency: {
     decimals: 18,
     name: 'Monad',
@@ -63,7 +60,6 @@ const monadTestnet: Chain = {
 const core: Chain = {
   id: 1116,
   name: 'Core',
-  network: 'core',
   nativeCurrency: {
     decimals: 18,
     name: 'Core',
