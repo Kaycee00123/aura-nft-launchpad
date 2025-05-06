@@ -40,8 +40,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [walletDetected, setWalletDetected] = useState<boolean>(false);
   
   // Wagmi hooks
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, status: connectStatus } = useConnect();
+  const { address, isConnected, status: accountStatus } = useAccount();
+  const { connect, connectors, isPending: isConnectPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -52,27 +52,55 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     address,
   });
 
-  // Check if a wallet is detected on page load
+  // More robust wallet detection logic
   useEffect(() => {
     const checkWalletAvailability = async () => {
-      // Check if window.ethereum exists (indicates wallet extension is present)
-      const hasExtensionWallet = typeof window !== 'undefined' && 
+      // Check multiple wallet indicators
+      const hasInjectedEthereum = typeof window !== 'undefined' && 
                                 window.ethereum !== undefined;
       
       // Check if any connectors are available and ready
-      const hasConnector = connectors.some(connector => connector.ready);
+      const hasReadyConnector = connectors.some(connector => connector.ready);
       
-      setWalletDetected(hasExtensionWallet || hasConnector);
+      // Additional browser wallet detection methods
+      const hasEthereumRequest = typeof window !== 'undefined' && 
+                               typeof window.ethereum?.request === 'function';
       
-      console.log("Wallet detection:", { 
-        hasExtensionWallet, 
-        hasConnector,
+      const walletIsDetected = hasInjectedEthereum || hasReadyConnector || hasEthereumRequest;
+      
+      console.log("Wallet detection results:", { 
+        hasInjectedEthereum, 
+        hasReadyConnector,
+        hasEthereumRequest,
+        walletIsDetected,
         availableConnectors: connectors.map(c => ({ id: c.id, name: c.name, ready: c.ready }))
       });
+      
+      setWalletDetected(walletIsDetected);
     };
     
     checkWalletAvailability();
+    
+    // Re-check when window is focused (in case wallet was installed/enabled)
+    const handleFocus = () => checkWalletAvailability();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [connectors]);
+
+  // Handle connection errors
+  useEffect(() => {
+    if (connectError) {
+      console.error("Wallet connection error:", connectError);
+      toast({
+        variant: "destructive",
+        title: "Connection Failed",
+        description: connectError.message || "Failed to connect wallet. Please try again.",
+      });
+    }
+  }, [connectError, toast]);
 
   // Update balance when it changes
   useEffect(() => {
@@ -84,7 +112,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Find the current chain from supportedChains
   const currentChain = supportedChains.find(chain => chain.id === chainId);
 
-  // Connect wallet function
+  // Connect wallet function with better error handling
   const connectWallet = async () => {
     try {
       setIsLoading(true);
@@ -99,14 +127,17 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Try injected connector first (MetaMask, etc)
       const injectedConnector = connectors.find(c => c.id === 'injected' && c.ready);
       
-      // If no injected connector, try any other ready connector
+      // If no injected connector, try wallet connect
+      const walletConnectConnector = connectors.find(c => c.id === 'walletConnect');
+      
+      // If neither, try any ready connector
       const anyConnector = connectors.find(c => c.ready);
       
       // Use the first available connector
-      const connector = injectedConnector || anyConnector;
+      const connector = injectedConnector || walletConnectConnector || anyConnector;
       
       if (connector) {
-        console.log("Connecting with connector:", connector.name);
+        console.log("Attempting to connect with connector:", connector.name);
         await connect({ connector });
         toast({
           title: "Wallet Connected",
@@ -125,7 +156,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       toast({
         variant: "destructive",
         title: "Connection Failed",
-        description: error.message || "Failed to connect wallet.",
+        description: error.message || "Failed to connect wallet. Please try refreshing the page.",
       });
     } finally {
       setIsLoading(false);

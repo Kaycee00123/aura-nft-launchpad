@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Wallet, Copy, ExternalLink, LogOut, AlertTriangle } from "lucide-react";
+import { Wallet, Copy, ExternalLink, LogOut, AlertTriangle, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface WalletButtonProps {
@@ -22,7 +22,7 @@ const shortenAddress = (address: string | undefined): string => {
 };
 
 export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" }) => {
-  const { wallet, isConnected, connectWallet, disconnectWallet, walletDetected } = useWallet();
+  const { wallet, isConnected, isLoading, connectWallet, disconnectWallet, walletDetected } = useWallet();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -50,6 +50,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
   };
   
   const handleConnectClick = async () => {
+    // Connect or provide guidance based on wallet detection
     if (!walletDetected) {
       // If no wallet is detected, show instructions
       toast({
@@ -57,6 +58,8 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
         title: "No Wallet Detected",
         description: "Please install MetaMask or another Web3 wallet extension to continue.",
       });
+      // Open MetaMask download page in a new tab
+      window.open('https://metamask.io/download/', '_blank');
     } else {
       // If wallet is detected, try to connect
       await connectWallet();
@@ -69,8 +72,14 @@ export const WalletButton: React.FC<WalletButtonProps> = ({ variant = "outline" 
         variant={variant} 
         className="font-medium border-aura-purple text-aura-purple hover:bg-aura-purple/10"
         onClick={handleConnectClick}
+        disabled={isLoading}
       >
-        {!walletDetected ? (
+        {isLoading ? (
+          <>
+            <Loader className="h-4 w-4 mr-2 animate-spin" />
+            Connecting...
+          </>
+        ) : !walletDetected ? (
           <>
             <AlertTriangle className="h-4 w-4 mr-2 text-yellow-500" />
             Install Wallet

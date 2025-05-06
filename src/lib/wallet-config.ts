@@ -86,16 +86,26 @@ export const supportedChains = [
   core,
 ] as const;
 
-// Updated project ID from WalletConnect Cloud
+// Project ID from WalletConnect Cloud - making sure it's valid
 const projectId = '6f7da8ecb5707a7c8340093786426533';
 
-// Create explicit connectors
+// Create explicit connectors with proper configuration
 const connectors = [
-  injected(),
-  walletConnect({ projectId })
+  // Injected connector (MetaMask, etc) with configuration to improve detection
+  injected({
+    shimDisconnect: true,  // Improves disconnection handling
+    target: 'both',        // Targets both MetaMask and other injected wallets
+  }),
+  walletConnect({
+    projectId,
+    showQrModal: true,     // Ensure QR modal displays properly
+    qrModalOptions: {
+      themeMode: 'light',
+    }
+  })
 ];
 
-// Create wagmi config
+// Create wagmi config with proper timeouts
 export const config = createConfig({
   chains: supportedChains,
   connectors,
@@ -109,9 +119,14 @@ export const config = createConfig({
     [monadTestnet.id]: http(),
     [core.id]: http(),
   },
+  // Adding ether.js-compatible options
+  syncConnectedChain: true, // Keep chain in sync with wallet
+  batch: {
+    multicall: true,      // Use multicall for batch requests
+  },
 });
 
-// Create Web3Modal
+// Create Web3Modal with improved configuration
 export const web3Modal = createWeb3Modal({
   wagmiConfig: config,
   projectId,
@@ -119,7 +134,10 @@ export const web3Modal = createWeb3Modal({
   themeMode: 'light',
   themeVariables: {
     '--w3m-accent': '#7C3AED', // Make theme match our purple color
+    '--w3m-border-radius-master': '4px', // Match our UI style
   },
   includeWalletIds: [], // Include all available wallets
   featuredWalletIds: [], // Feature none specifically
+  defaultChain: mainnet, // Set a default chain
 });
+
