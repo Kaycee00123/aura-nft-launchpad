@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,11 +12,16 @@ import { uploadFileToIPFS, uploadJSONToIPFS, ipfsToHttpURL } from "@/lib/ipfs/ip
 import { getFactoryContract, generateMerkleData, getDropContract } from "@/lib/contracts/contract-utils";
 import { ethers } from "ethers";
 import { Loader } from "lucide-react";
+import { useWalletRequired } from "@/hooks/useWalletRequired";
+import ConnectWalletPrompt from "@/components/wallet/ConnectWalletPrompt";
 
 const CreateDrop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { wallet, isConnected } = useWallet();
+  
+  // Check if wallet is connected using our new hook
+  const { isCheckingWallet } = useWalletRequired();
 
   // Form fields state
   const [name, setName] = useState("");
@@ -258,6 +262,23 @@ const CreateDrop = () => {
     }
   };
 
+  // If wallet is not connected, show the connect wallet prompt
+  if (!isConnected && !isCheckingWallet) {
+    return (
+      <div className="container max-w-4xl mx-auto py-8">
+        <h1 className="text-2xl font-bold mb-6">Create New NFT Drop</h1>
+        <div className="max-w-md mx-auto">
+          <ConnectWalletPrompt 
+            title="Connect Wallet to Create Drop" 
+            description="You need to connect your wallet to create an NFT drop"
+            requiredAction="create a drop"
+          />
+        </div>
+      </div>
+    );
+  }
+  
+  // Main form render when wallet is connected
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <h1 className="text-2xl font-bold mb-6">Create New NFT Drop</h1>

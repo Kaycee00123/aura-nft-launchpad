@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,10 @@ import {
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useWalletRequired } from "@/hooks/useWalletRequired";
+import ConnectWalletPrompt from "@/components/wallet/ConnectWalletPrompt";
+import { uploadFileToIPFS } from "@/lib/ipfs/ipfs-service";
+import { supportedChains } from "@/lib/wallet-config";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Collection name must be at least 3 characters" }),
@@ -45,11 +49,15 @@ const CreateCollection = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingToIPFS, setIsUploadingToIPFS] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const displayImageInputRef = useRef<HTMLInputElement>(null);
   
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [displayImagePreview, setDisplayImagePreview] = useState<string | null>(null);
+  
+  // Check if wallet is connected
+  const { isConnected } = useWalletRequired();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -86,6 +94,15 @@ const CreateCollection = () => {
   };
 
   const onSubmit = async (values: FormValues) => {
+    if (!isConnected) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to create a collection",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!values.displayImage || !values.bannerImage) {
       toast({
         title: "Missing Images",
@@ -96,8 +113,15 @@ const CreateCollection = () => {
     }
     
     setIsSubmitting(true);
+    setIsUploadingToIPFS(true);
     
     try {
+      // Upload images to IPFS
+      const logoUploadResult = await uploadFileToIPFS(values.displayImage);
+      const bannerUploadResult = await uploadFileToIPFS(values.bannerImage);
+      
+      setIsUploadingToIPFS(false);
+
       // In a real app, this would create a smart contract with the collection
       await new Promise(resolve => setTimeout(resolve, 2000));
       
@@ -114,11 +138,29 @@ const CreateCollection = () => {
         description: "Failed to create collection. Please try again.",
         variant: "destructive",
       });
+      setIsUploadingToIPFS(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // If wallet is not connected, show the connect wallet prompt
+  if (!isConnected) {
+    return (
+      <div className="container py-8">
+        <h1 className="text-2xl font-bold mb-6">Create New Collection</h1>
+        <div className="max-w-md mx-auto">
+          <ConnectWalletPrompt 
+            title="Connect Wallet to Create Collection" 
+            description="You need to connect your wallet to create an NFT collection"
+            requiredAction="create a collection"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Main form render when wallet is connected
   return (
     <div>
       <div className="mb-6">
@@ -199,10 +241,11 @@ const CreateCollection = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Ethereum">Ethereum</SelectItem>
-                            <SelectItem value="Polygon">Polygon</SelectItem>
-                            <SelectItem value="Solana">Solana</SelectItem>
-                            <SelectItem value="Binance">Binance Smart Chain</SelectItem>
+                            {supportedChains.map((chain) => (
+                              <SelectItem key={chain.id} value={chain.name}>
+                                {chain.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -376,13 +419,22 @@ const CreateCollection = () => {
                   {isSubmitting ? (
                     <>
                       <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Creating Collection...
+                      {isUploadingToIPFS ? "Uploading to IPFS..." : "Creating Collection..."}
                     </>
                   ) : (
                     "Deploy Collection"
                   )}
                 </Button>
               </div>
+              
+              {isUploadingToIPFS && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center">
+                    <Loader className="h-4 w-4 text-blue-500 mr-2 animate-spin" />
+                    <span className="text-sm text-blue-700">Uploading files to IPFS... This may take a moment.</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </form>
