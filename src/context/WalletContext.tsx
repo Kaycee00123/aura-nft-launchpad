@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
 // Create wagmi config with v2 API
-const config = createConfig({
+export const config = createConfig({
   chains: [mainnet, base, arbitrum, sepolia],
   transports: {
     [mainnet.id]: http(),
