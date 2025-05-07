@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   useAccount, 
-  useConnect, 
+  useConnect,
   useDisconnect, 
   useBalance, 
   useChainId,
@@ -41,10 +41,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   // Wagmi hooks
   const { address, isConnected, status: accountStatus } = useAccount();
-  const { connect, connectors, isPending: isConnectPending, error: connectError } = useConnect();
+  const { connectAsync, connectors, isPending: isConnectPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
+  const { switchChainAsync } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
   
   // Get balance using wagmi hook
@@ -112,33 +112,17 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Find the current chain from supportedChains
   const currentChain = supportedChains.find(chain => chain.id === chainId);
 
-  // Connect wallet function with better error handling
+  // Connect wallet function that leverages Rainbow Kit's connection flow
   const connectWallet = async () => {
     try {
       setIsLoading(true);
       
-      // Log available connectors for debugging
-      console.log("Available connectors:", connectors.map(c => ({ 
-        id: c.id, 
-        name: c.name, 
-        ready: c.ready 
-      })));
+      // Let RainbowKit handle the connection flow
+      // This is a simpler implementation as RainbowKit handles most of the complexity
+      const readyConnector = connectors.find(c => c.ready);
       
-      // Try injected connector first (MetaMask, etc)
-      const injectedConnector = connectors.find(c => c.id === 'injected' && c.ready);
-      
-      // If no injected connector, try wallet connect
-      const walletConnectConnector = connectors.find(c => c.id === 'walletConnect');
-      
-      // If neither, try any ready connector
-      const anyConnector = connectors.find(c => c.ready);
-      
-      // Use the first available connector
-      const connector = injectedConnector || walletConnectConnector || anyConnector;
-      
-      if (connector) {
-        console.log("Attempting to connect with connector:", connector.name);
-        await connect({ connector });
+      if (readyConnector) {
+        await connectAsync({ connector: readyConnector });
         toast({
           title: "Wallet Connected",
           description: "Your wallet has been connected successfully.",
@@ -181,7 +165,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Switch network function
   const switchToChain = async (targetChainId: number): Promise<boolean> => {
-    if (!switchChain) {
+    if (!switchChainAsync) {
       toast({
         variant: "destructive",
         title: "Network Switch Unavailable",
@@ -192,7 +176,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       setIsLoading(true);
-      await switchChain({ chainId: targetChainId });
+      await switchChainAsync({ chainId: targetChainId });
       return true;
     } catch (error: any) {
       console.error("Error switching network:", error);

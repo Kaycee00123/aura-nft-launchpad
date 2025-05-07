@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check } from '@/components/icons/Check';
 import { Wallet, AlertCircle, Download } from 'lucide-react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 interface ConnectWalletPromptProps {
   title?: string;
@@ -17,15 +18,11 @@ const ConnectWalletPrompt: React.FC<ConnectWalletPromptProps> = ({
   description = "You need to connect your wallet to continue",
   requiredAction = "Continue"
 }) => {
-  const { isConnected, connectWallet, walletDetected } = useWallet();
+  const { isConnected, walletDetected } = useWallet();
 
-  const handleWalletClick = () => {
-    if (walletDetected) {
-      connectWallet();
-    } else {
-      // Open MetaMask download page in a new tab
-      window.open('https://metamask.io/download/', '_blank');
-    }
+  const handleInstallWallet = () => {
+    // Open MetaMask download page in a new tab
+    window.open('https://metamask.io/download/', '_blank');
   };
 
   return (
@@ -78,22 +75,29 @@ const ConnectWalletPrompt: React.FC<ConnectWalletPromptProps> = ({
       
       <CardFooter className="flex justify-center">
         {!isConnected && (
-          <Button 
-            onClick={handleWalletClick}
-            className="w-full bg-aura-purple hover:bg-aura-purple-dark flex items-center justify-center gap-2"
-          >
-            {walletDetected ? (
-              <>
-                <Wallet className="h-4 w-4" />
-                Connect Wallet
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Install Wallet
-              </>
-            )}
-          </Button>
+          walletDetected ? (
+            <div className="w-full">
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <Button 
+                    onClick={openConnectModal}
+                    className="w-full bg-aura-purple hover:bg-aura-purple-dark flex items-center justify-center gap-2"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Connect Wallet
+                  </Button>
+                )}
+              </ConnectButton.Custom>
+            </div>
+          ) : (
+            <Button 
+              onClick={handleInstallWallet}
+              className="w-full bg-aura-purple hover:bg-aura-purple-dark flex items-center justify-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Install Wallet
+            </Button>
+          )
         )}
       </CardFooter>
     </Card>

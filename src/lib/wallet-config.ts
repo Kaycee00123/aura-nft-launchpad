@@ -1,8 +1,16 @@
 
 import { createConfig, http } from 'wagmi'
 import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains'
-import { createWeb3Modal } from '@web3modal/wagmi/react'
-import { injected, walletConnect } from 'wagmi/connectors'
+import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+import { 
+  metaMaskWallet, 
+  walletConnectWallet, 
+  injectedWallet,
+  coinbaseWallet, 
+  rainbowWallet,
+  braveWallet,
+  trustWallet
+} from '@rainbow-me/rainbowkit/wallets'
 import { type Chain } from 'wagmi/chains'
 
 // Define custom chains matching the Chain type structure
@@ -74,7 +82,7 @@ const core: Chain = {
   },
 }
 
-// All supported chains - explicitly cast as const array of Chain type
+// All supported chains
 export const supportedChains = [
   mainnet,
   sepolia,
@@ -86,29 +94,34 @@ export const supportedChains = [
   core,
 ] as const;
 
-// Project ID from WalletConnect Cloud - making sure it's valid
+// Project ID from WalletConnect Cloud
 const projectId = '6f7da8ecb5707a7c8340093786426533';
 
-// Create explicit connectors with proper configuration
-const connectors = [
-  // Injected connector (MetaMask, etc) with configuration to improve detection
-  injected({
-    shimDisconnect: true,  // Improves disconnection handling
-    target: 'both',        // Targets both MetaMask and other injected wallets
-  }),
-  walletConnect({
-    projectId,
-    showQrModal: true,     // Ensure QR modal displays properly
-    qrModalOptions: {
-      themeMode: 'light',
-    }
-  })
-];
+// Set up connectors for Rainbow Kit
+const connectors = connectorsForWallets([
+  {
+    groupName: 'Recommended',
+    wallets: [
+      metaMaskWallet({ projectId, chains: supportedChains }),
+      walletConnectWallet({ projectId, chains: supportedChains }),
+      coinbaseWallet({ appName: 'AURA NFT', chains: supportedChains }),
+    ],
+  },
+  {
+    groupName: 'Other Wallets',
+    wallets: [
+      injectedWallet({ chains: supportedChains }),
+      rainbowWallet({ projectId, chains: supportedChains }),
+      braveWallet({ chains: supportedChains }),
+      trustWallet({ projectId, chains: supportedChains })
+    ],
+  },
+]);
 
-// Create wagmi config with proper timeouts
+// Create wagmi config with RainbowKit connectors
 export const config = createConfig({
   chains: supportedChains,
-  connectors,
+  connectors: connectors,
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),
@@ -124,20 +137,5 @@ export const config = createConfig({
   batch: {
     multicall: true,      // Use multicall for batch requests
   },
-});
-
-// Create Web3Modal with improved configuration
-export const web3Modal = createWeb3Modal({
-  wagmiConfig: config,
-  projectId,
-  enableAnalytics: true,
-  themeMode: 'light',
-  themeVariables: {
-    '--w3m-accent': '#7C3AED', // Make theme match our purple color
-    '--w3m-border-radius-master': '4px', // Match our UI style
-  },
-  includeWalletIds: [], // Include all available wallets
-  featuredWalletIds: [], // Feature none specifically
-  defaultChain: mainnet, // Set a default chain
 });
 
