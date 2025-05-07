@@ -99,19 +99,9 @@ const DropDetails = () => {
     try {
       setLoading(true);
 
-      // Connect to provider if wallet is connected
-      let provider;
-      let signer;
-      
-      if (isConnected && window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-      } else {
-        // Use a read-only provider if wallet is not connected
-        // For now, we'll just skip loading contract data if not connected
-        setLoading(false);
-        return;
-      }
+      // Since we've removed wallet connection, use a simple provider
+      let provider = new ethers.providers.JsonRpcProvider();
+      let signer = provider.getSigner();
 
       // Get drop contract
       const dropContract = getDropContract(slug, signer);
@@ -151,7 +141,7 @@ const DropDetails = () => {
 
       // Check if user is creator
       setIsCreator(
-        wallet?.address?.toLowerCase() === creator.toLowerCase()
+        wallet.address?.toLowerCase() === creator.toLowerCase()
       );
 
       // Update drop state
@@ -227,7 +217,8 @@ const DropDetails = () => {
     try {
       setActionInProgress('whitelist');
       
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      // Since wallet connection is removed, these are now just placeholder functions
+      const provider = new ethers.providers.JsonRpcProvider();
       const signer = provider.getSigner();
       const dropContract = getDropContract(slug || "", signer);
       
@@ -260,7 +251,8 @@ const DropDetails = () => {
     try {
       setActionInProgress('soulbound');
       
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      // Since wallet connection is removed, these are now just placeholder functions
+      const provider = new ethers.providers.JsonRpcProvider();
       const signer = provider.getSigner();
       const dropContract = getDropContract(slug || "", signer);
       
@@ -293,7 +285,8 @@ const DropDetails = () => {
     try {
       setActionInProgress('withdraw');
       
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      // Since wallet connection is removed, these are now just placeholder functions
+      const provider = new ethers.providers.JsonRpcProvider();
       const signer = provider.getSigner();
       const dropContract = getDropContract(slug || "", signer);
       
@@ -478,7 +471,7 @@ const DropDetails = () => {
                 
                 <TabsContent value="description" className="mt-4 text-gray-700">
                   <p>
-                    {drop.name} ({drop.symbol}) is a unique NFT collection on the {wallet.chain?.name || "blockchain"}.
+                    {drop.name} ({drop.symbol}) is a unique NFT collection{wallet.chain?.name ? ` on the ${wallet.chain.name}` : ""}.
                     {drop.isSoulbound && " This is a soulbound collection, meaning the NFTs cannot be transferred once minted."}
                     {drop.isWhitelistEnabled && " This collection has a whitelist requirement for minting."}
                   </p>
@@ -545,7 +538,7 @@ const DropDetails = () => {
                         <Coins className="h-4 w-4" />
                         <span>Price</span>
                       </div>
-                      <span className="font-semibold">{formatEth(drop.price)} {wallet.chain?.nativeCurrency.symbol || "ETH"}</span>
+                      <span className="font-semibold">{formatEth(drop.price)} {wallet.chain?.nativeCurrency?.symbol || "ETH"}</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -709,7 +702,7 @@ const DropDetails = () => {
                   variant="outline" 
                   className="flex-1 border-gray-200 text-gray-700 hover:bg-gray-50"
                   onClick={() => {
-                    const explorerUrl = wallet.chain?.blockExplorers?.default.url;
+                    const explorerUrl = wallet.chain?.blockExplorers?.default?.url;
                     if (explorerUrl && drop.contractAddress) {
                       window.open(`${explorerUrl}/address/${drop.contractAddress}`, "_blank");
                     }

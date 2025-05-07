@@ -44,7 +44,8 @@ const MyDrops = () => {
         return;
       }
       
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      // Use a JsonRpcProvider instead of relying on window.ethereum
+      const provider = new ethers.providers.JsonRpcProvider();
       const signer = provider.getSigner();
       
       // Get factory contract
@@ -210,7 +211,7 @@ const MyDrops = () => {
                     size="sm"
                     className="w-full text-gray-500 hover:text-gray-700"
                     onClick={() => {
-                      const explorerUrl = wallet.chain?.blockExplorers?.default.url;
+                      const explorerUrl = wallet.chain?.blockExplorers?.default?.url;
                       if (explorerUrl) {
                         window.open(`${explorerUrl}/address/${drop.address}`, "_blank");
                       }

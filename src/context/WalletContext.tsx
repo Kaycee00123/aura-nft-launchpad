@@ -1,23 +1,24 @@
 
 import React, { createContext, useContext } from "react";
+import { Chain } from "@/lib/wallet-utils";
 
-// Simplified WalletContext without actual connection functionality
+// Define proper types for our wallet context
 type WalletContextType = {
   wallet: {
-    isConnected: false;
-    address: undefined;
-    chainId: undefined;
-    balance: "0";
-    chain: null;
+    isConnected: boolean;
+    address: string | undefined;
+    chainId: number | undefined;
+    balance: string;
+    chain: Chain | null;
   };
-  isLoading: false;
-  isConnected: false;
+  isLoading: boolean;
+  isConnected: boolean;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchToChain: (chainId: number) => Promise<boolean>;
   supportedChains: any[];
   connectUserWallet: () => Promise<void>;
-  walletDetected: false;
+  walletDetected: boolean;
 };
 
 // Create a mock wallet context with dummy functions

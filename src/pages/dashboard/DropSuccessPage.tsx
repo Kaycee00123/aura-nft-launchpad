@@ -46,7 +46,8 @@ const DropSuccessPage = () => {
         return;
       }
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      // Use a JsonRpcProvider instead of relying on window.ethereum
+      const provider = new ethers.providers.JsonRpcProvider();
       const signer = provider.getSigner();
       
       const dropContract: NFTDropInterface = getDropContract(address, signer);

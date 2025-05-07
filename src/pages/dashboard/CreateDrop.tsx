@@ -184,8 +184,8 @@ const CreateDrop = () => {
       // Step 5: Deploy contract
       setContractCreationStep("Deploying contract...");
       
-      // Get provider and signer
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      // Use a JsonRpcProvider instead of relying on window.ethereum
+      const provider = new ethers.providers.JsonRpcProvider();
       const signer = provider.getSigner();
       
       // Get factory contract
@@ -282,212 +282,222 @@ const CreateDrop = () => {
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <h1 className="text-2xl font-bold mb-6">Create New NFT Drop</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Drop Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="symbol">Symbol</Label>
-              <Input
-                type="text"
-                id="symbol"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {!isConnected && !isCheckingWallet ? (
+        <div className="max-w-md mx-auto">
+          <ConnectWalletPrompt 
+            title="Connect Wallet to Create Drop" 
+            description="You need to connect your wallet to create an NFT drop"
+            requiredAction="create a drop"
+          />
+        </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Drop Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="price">Price (ETH)</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input
-                  type="number"
-                  id="price"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  step="0.001"
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="maxSupply">Max Supply</Label>
+                <Label htmlFor="symbol">Symbol</Label>
                 <Input
-                  type="number"
-                  id="maxSupply"
-                  value={maxSupply}
-                  onChange={(e) => setMaxSupply(Number(e.target.value))}
+                  type="text"
+                  id="symbol"
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value)}
                   required
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="logo">Logo Image</Label>
-                <Input type="file" id="logo" onChange={handleLogoChange} required />
-                {logoFile && (
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">Selected File: {logoFile.name}</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="banner">Banner Image</Label>
-                <Input type="file" id="banner" onChange={handleBannerChange} required />
-                {bannerFile && (
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">Selected File: {bannerFile.name}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="mintStart">Mint Start Date</Label>
-                <Input
-                  type="datetime-local"
-                  id="mintStart"
-                  onChange={(e) => setMintStart(new Date(e.target.value))}
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
                 />
               </div>
-              <div>
-                <Label htmlFor="mintEnd">Mint End Date</Label>
-                <Input
-                  type="datetime-local"
-                  id="mintEnd"
-                  onChange={(e) => setMintEnd(new Date(e.target.value))}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Traits (Optional)</Label>
-              {traitOptions.map((trait, index) => (
-                <div key={index} className="mb-4 p-4 border rounded-md">
-                  <div className="flex items-center justify-between mb-2">
-                    <Label htmlFor={`traitName-${index}`}>Trait {index + 1}</Label>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveTrait(index)}>
-                      Remove
-                    </Button>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="price">Price (ETH)</Label>
                   <Input
-                    type="text"
-                    id={`traitName-${index}`}
-                    placeholder="Trait Name"
-                    value={trait.name}
-                    onChange={(e) => handleTraitNameChange(index, e.target.value)}
-                    className="mb-2"
+                    type="number"
+                    id="price"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    step="0.001"
+                    required
                   />
-                  {trait.values.map((value, valueIndex) => (
-                    <div key={valueIndex} className="flex items-center mb-2">
-                      <Input
-                        type="text"
-                        placeholder="Trait Value"
-                        value={value}
-                        onChange={(e) => handleTraitValueChange(index, valueIndex, e.target.value)}
-                        className="mr-2"
-                      />
-                      <Button type="button" variant="outline" size="icon" onClick={() => handleRemoveTraitValue(index, valueIndex)}>
-                        -
+                </div>
+                <div>
+                  <Label htmlFor="maxSupply">Max Supply</Label>
+                  <Input
+                    type="number"
+                    id="maxSupply"
+                    value={maxSupply}
+                    onChange={(e) => setMaxSupply(Number(e.target.value))}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="logo">Logo Image</Label>
+                  <Input type="file" id="logo" onChange={handleLogoChange} required />
+                  {logoFile && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">Selected File: {logoFile.name}</p>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="banner">Banner Image</Label>
+                  <Input type="file" id="banner" onChange={handleBannerChange} required />
+                  {bannerFile && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">Selected File: {bannerFile.name}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="mintStart">Mint Start Date</Label>
+                  <Input
+                    type="datetime-local"
+                    id="mintStart"
+                    onChange={(e) => setMintStart(new Date(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mintEnd">Mint End Date</Label>
+                  <Input
+                    type="datetime-local"
+                    id="mintEnd"
+                    onChange={(e) => setMintEnd(new Date(e.target.value))}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Traits (Optional)</Label>
+                {traitOptions.map((trait, index) => (
+                  <div key={index} className="mb-4 p-4 border rounded-md">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor={`traitName-${index}`}>Trait {index + 1}</Label>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveTrait(index)}>
+                        Remove
                       </Button>
                     </div>
-                  ))}
-                  <Button type="button" variant="secondary" size="sm" onClick={() => handleAddTraitValue(index)}>
-                    Add Value
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" onClick={handleAddTrait}>
-                Add Trait
-              </Button>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="isSoulbound">Soulbound (Non-Transferable)</Label>
-              <Switch
-                id="isSoulbound"
-                checked={isSoulbound}
-                onCheckedChange={(checked) => setIsSoulbound(checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="allowBurning">Allow Burning</Label>
-              <Switch
-                id="allowBurning"
-                checked={allowBurning}
-                onCheckedChange={(checked) => setAllowBurning(checked)}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="isWhitelistEnabled">Enable Whitelist</Label>
+                    <Input
+                      type="text"
+                      id={`traitName-${index}`}
+                      placeholder="Trait Name"
+                      value={trait.name}
+                      onChange={(e) => handleTraitNameChange(index, e.target.value)}
+                      className="mb-2"
+                    />
+                    {trait.values.map((value, valueIndex) => (
+                      <div key={valueIndex} className="flex items-center mb-2">
+                        <Input
+                          type="text"
+                          placeholder="Trait Value"
+                          value={value}
+                          onChange={(e) => handleTraitValueChange(index, valueIndex, e.target.value)}
+                          className="mr-2"
+                        />
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleRemoveTraitValue(index, valueIndex)}>
+                          -
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="secondary" size="sm" onClick={() => handleAddTraitValue(index)}>
+                      Add Value
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" onClick={handleAddTrait}>
+                  Add Trait
+                </Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="isSoulbound">Soulbound (Non-Transferable)</Label>
                 <Switch
-                  id="isWhitelistEnabled"
-                  checked={isWhitelistEnabled}
-                  onCheckedChange={(checked) => setIsWhitelistEnabled(checked)}
+                  id="isSoulbound"
+                  checked={isSoulbound}
+                  onCheckedChange={(checked) => setIsSoulbound(checked)}
                 />
               </div>
-              {isWhitelistEnabled && (
-                <div>
-                  <Label htmlFor="whitelistAddresses">Whitelist Addresses (one per line)</Label>
-                  <Textarea
-                    id="whitelistAddresses"
-                    value={whitelistAddresses}
-                    onChange={(e) => setWhitelistAddresses(e.target.value)}
-                    rows={5}
-                    placeholder="0x...\n0x...\n..."
+              <div className="flex items-center justify-between">
+                <Label htmlFor="allowBurning">Allow Burning</Label>
+                <Switch
+                  id="allowBurning"
+                  checked={allowBurning}
+                  onCheckedChange={(checked) => setAllowBurning(checked)}
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="isWhitelistEnabled">Enable Whitelist</Label>
+                  <Switch
+                    id="isWhitelistEnabled"
+                    checked={isWhitelistEnabled}
+                    onCheckedChange={(checked) => setIsWhitelistEnabled(checked)}
                   />
                 </div>
-              )}
-            </div>
-
-            {/* Create drop button */}
-            <div className="flex justify-end mt-6">
-              <Button 
-                type="submit" 
-                disabled={creatingContract}
-                className="bg-aura-purple hover:bg-aura-purple-dark"
-              >
-                {creatingContract ? (
-                  <>
-                    <Loader className="mr-2 h-4 w-4 animate-spin" /> 
-                    {contractCreationStep || "Creating..."}
-                  </>
-                ) : (
-                  "Create NFT Drop"
+                {isWhitelistEnabled && (
+                  <div>
+                    <Label htmlFor="whitelistAddresses">Whitelist Addresses (one per line)</Label>
+                    <Textarea
+                      id="whitelistAddresses"
+                      value={whitelistAddresses}
+                      onChange={(e) => setWhitelistAddresses(e.target.value)}
+                      rows={5}
+                      placeholder="0x...\n0x...\n..."
+                    />
+                  </div>
                 )}
-              </Button>
-            </div>
-
-            {/* Uploading indicator */}
-            {uploadingToIPFS && (
-              <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
-                <div className="flex items-center text-blue-700">
-                  <Loader className="mr-2 h-4 w-4 animate-spin" /> 
-                  <span>Uploading files to IPFS... This may take a few moments.</span>
-                </div>
               </div>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+
+              {/* Create drop button */}
+              <div className="flex justify-end mt-6">
+                <Button 
+                  type="submit" 
+                  disabled={creatingContract}
+                  className="bg-aura-purple hover:bg-aura-purple-dark"
+                >
+                  {creatingContract ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" /> 
+                      {contractCreationStep || "Creating..."}
+                    </>
+                  ) : (
+                    "Create NFT Drop"
+                  )}
+                </Button>
+              </div>
+
+              {/* Uploading indicator */}
+              {uploadingToIPFS && (
+                <div className="mt-4 p-4 rounded-md bg-blue-50 border border-blue-200">
+                  <div className="flex items-center text-blue-700">
+                    <Loader className="mr-2 h-4 w-4 animate-spin" /> 
+                    <span>Uploading files to IPFS... This may take a few moments.</span>
+                  </div>
+                </div>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
