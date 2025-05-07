@@ -1,38 +1,44 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { createWeb3Modal, useWeb3Modal, useWeb3ModalState } from '@web3modal/wagmi/react';
-import { createConfig, configureChains, useAccount, useNetwork, useSwitchNetwork, useBalance, useDisconnect } from 'wagmi';
+import { 
+  createConfig, 
+  useAccount, 
+  useBalance, 
+  useDisconnect,
+  useChainId,
+  useSwitchChain,
+  http
+} from 'wagmi';
 import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
-import { publicProvider } from 'wagmi/providers/public';
-import { injectedWallet, walletConnect } from '@wagmi/connectors';
+import { injected, walletConnect } from 'wagmi/connectors';
 import { Chain } from "@/lib/wallet-utils";
 import { SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
 import { useToast } from "@/hooks/use-toast";
 
-// Configure chains and providers
-const { chains, publicClient } = configureChains(
-  [mainnet, base, arbitrum, sepolia],
-  [publicProvider()]
-);
-
 // Project ID from WalletConnect
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
-// Create wagmi config
-const wagmiConfig = createConfig({
-  autoConnect: true,
+// Create wagmi config with v2 API
+const config = createConfig({
+  chains: [mainnet, base, arbitrum, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [base.id]: http(),
+    [arbitrum.id]: http(),
+    [sepolia.id]: http()
+  },
   connectors: [
-    injectedWallet({ chains }),
-    walletConnect({ chains, projectId })
+    injected(),
+    walletConnect({ projectId })
   ],
-  publicClient
 });
 
 // Create Web3Modal
 createWeb3Modal({
-  wagmiConfig,
+  wagmiConfig: config,
   projectId,
-  chains,
+  enableAnalytics: false, // Optional, defaults to true
   themeMode: 'light',
   themeVariables: {
     '--w3m-accent': '#6d28d9', // Purple accent color
@@ -84,8 +90,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { open } = useWeb3Modal();
   const { selectedNetworkId } = useWeb3ModalState();
   const { address, isConnected, connector } = useAccount();
-  const { chain } = useNetwork();
-  const { switchNetwork } = useSwitchNetwork();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const { disconnect } = useDisconnect();
   const [isLoading, setIsLoading] = useState(false);
   const [walletDetected, setWalletDetected] = useState(false);
@@ -94,7 +100,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const checkForWallets = async () => {
       const hasInjectedProvider = typeof window !== 'undefined' && 
-        (window.ethereum || window.coinbaseWalletExtension);
+        (window.ethereum || (window as any).coinbaseWalletExtension);
       setWalletDetected(hasInjectedProvider);
     };
     
@@ -104,14 +110,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Get balance of connected account
   const { data: balanceData } = useBalance({
     address: address,
-    enabled: isConnected && !!address,
   });
   
   // Format balance for display
   const balance = balanceData ? balanceData.formatted.substring(0, 6) : "0";
   
-  // Convert Wagmi chain to our Chain type
-  const currentChain = chain ? getChainById(chain.id) : null;
+  // Convert chain id to our Chain type
+  const currentChain = chainId ? getChainById(chainId) : null;
   
   // Connect wallet using Web3Modal
   const connectWallet = async () => {
@@ -141,13 +146,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   // Switch to a different chain
   const switchToChain = async (chainId: number): Promise<boolean> => {
-    if (!isConnected || !switchNetwork) {
+    if (!isConnected) {
       return false;
     }
     
     try {
       setIsLoading(true);
-      await switchNetwork(chainId);
+      await switchChain({ chainId });
       return true;
     } catch (error: any) {
       console.error("Error switching chain:", error);
@@ -172,7 +177,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     wallet: {
       isConnected,
       address,
-      chainId: chain?.id,
+      chainId,
       balance,
       chain: currentChain,
     },

@@ -138,8 +138,8 @@ export const initialWalletState: WalletState = {
   chain: null,
 };
 
-export const getChainById = (chainId: number): Chain | undefined => {
-  return SUPPORTED_CHAINS.find(chain => chain.id === chainId);
+export const getChainById = (chainId: number): Chain | null => {
+  return SUPPORTED_CHAINS.find(chain => chain.id === chainId) || null;
 };
 
 export const shortenAddress = (address: string | null | undefined): string => {
