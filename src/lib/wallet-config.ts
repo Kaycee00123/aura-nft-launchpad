@@ -1,7 +1,7 @@
 
 import { createConfig, http } from 'wagmi';
 import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
-import { connectorsForWallets } from '@rainbow-me/rainbowkit';
+import { connectorsForWallets, getDefaultWallets } from '@rainbow-me/rainbowkit';
 import { 
   metaMaskWallet, 
   walletConnectWallet, 
@@ -97,26 +97,31 @@ export const supportedChains = [
 // Project ID from WalletConnect Cloud - required by Rainbow Kit
 const projectId = '6f7da8ecb5707a7c8340093786426533';
 
-// Set up connectors for Rainbow Kit
-const connectors = connectorsForWallets([
+// Using getDefaultWallets to get the recommended and other wallets
+const { wallets: defaultWallets } = getDefaultWallets({
+  appName: 'AURA NFT',
+  projectId,
+  chains: supportedChains,
+});
+
+// Set up additional connectors for Rainbow Kit
+const walletList = [
+  ...defaultWallets,
   {
-    groupName: 'Recommended',
+    groupName: 'Other Popular Wallets',
     wallets: [
-      metaMaskWallet({ projectId }),
-      walletConnectWallet({ projectId }),
-      coinbaseWallet({ appName: 'AURA NFT', projectId }),
+      braveWallet({ chains: supportedChains }),
+      trustWallet({ projectId, chains: supportedChains }),
+      injectedWallet({ chains: supportedChains }),
     ],
   },
-  {
-    groupName: 'Other Wallets',
-    wallets: [
-      injectedWallet(),
-      rainbowWallet({ projectId }),
-      braveWallet(),
-      trustWallet({ projectId })
-    ],
-  },
-]);
+];
+
+// Create connectors for Rainbow Kit
+const connectors = connectorsForWallets(walletList, {
+  projectId,
+  appName: 'AURA NFT',
+});
 
 // Create wagmi config with RainbowKit connectors
 export const config = createConfig({
