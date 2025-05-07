@@ -1,7 +1,7 @@
 
-import { createConfig, http } from 'wagmi'
-import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains'
-import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+import { createConfig, http } from 'wagmi';
+import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
+import { connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { 
   metaMaskWallet, 
   walletConnectWallet, 
@@ -10,8 +10,8 @@ import {
   rainbowWallet,
   braveWallet,
   trustWallet
-} from '@rainbow-me/rainbowkit/wallets'
-import { type Chain } from 'wagmi/chains'
+} from '@rainbow-me/rainbowkit/wallets';
+import { type Chain } from 'wagmi/chains';
 
 // Define custom chains matching the Chain type structure
 const abstractMainnet: Chain = {
@@ -29,7 +29,7 @@ const abstractMainnet: Chain = {
   blockExplorers: {
     default: { name: 'Abstract Explorer', url: 'https://abscan.org/' },
   },
-}
+};
 
 const abstractTestnet: Chain = {
   id: 2741,
@@ -46,7 +46,7 @@ const abstractTestnet: Chain = {
   blockExplorers: {
     default: { name: 'Abstract Testnet Explorer', url: 'https://sepolia.abscan.org/' },
   },
-}
+};
 
 const monadTestnet: Chain = {
   id: 10143,
@@ -63,7 +63,7 @@ const monadTestnet: Chain = {
   blockExplorers: {
     default: { name: 'Monad Explorer', url: 'https://testnet.monadexplorer.com/' },
   },
-}
+};
 
 const core: Chain = {
   id: 1116,
@@ -80,7 +80,7 @@ const core: Chain = {
   blockExplorers: {
     default: { name: 'Core Explorer', url: 'https://scan.coredao.org' },
   },
-}
+};
 
 // All supported chains
 export const supportedChains = [
@@ -94,7 +94,7 @@ export const supportedChains = [
   core,
 ] as const;
 
-// Project ID from WalletConnect Cloud
+// Project ID from WalletConnect Cloud - required by Rainbow Kit
 const projectId = '6f7da8ecb5707a7c8340093786426533';
 
 // Set up connectors for Rainbow Kit
@@ -102,18 +102,18 @@ const connectors = connectorsForWallets([
   {
     groupName: 'Recommended',
     wallets: [
-      metaMaskWallet({ projectId, chains: supportedChains }),
-      walletConnectWallet({ projectId, chains: supportedChains }),
-      coinbaseWallet({ appName: 'AURA NFT', chains: supportedChains }),
+      metaMaskWallet({ projectId }),
+      walletConnectWallet({ projectId }),
+      coinbaseWallet({ appName: 'AURA NFT', projectId }),
     ],
   },
   {
     groupName: 'Other Wallets',
     wallets: [
-      injectedWallet({ chains: supportedChains }),
-      rainbowWallet({ projectId, chains: supportedChains }),
-      braveWallet({ chains: supportedChains }),
-      trustWallet({ projectId, chains: supportedChains })
+      injectedWallet(),
+      rainbowWallet({ projectId }),
+      braveWallet(),
+      trustWallet({ projectId })
     ],
   },
 ]);
@@ -121,7 +121,7 @@ const connectors = connectorsForWallets([
 // Create wagmi config with RainbowKit connectors
 export const config = createConfig({
   chains: supportedChains,
-  connectors: connectors,
+  connectors,
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),
@@ -138,4 +138,3 @@ export const config = createConfig({
     multicall: true,      // Use multicall for batch requests
   },
 });
-
