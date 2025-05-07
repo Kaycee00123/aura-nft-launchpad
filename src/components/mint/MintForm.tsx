@@ -6,9 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useWallet } from '@/context/WalletContext';
-import { Loader, Plus, Minus } from 'lucide-react';
-import { ethers } from 'ethers';
+import { Plus, Minus } from 'lucide-react';
 
 interface MintFormProps {
   dropName: string;
@@ -31,10 +29,7 @@ const MintForm: React.FC<MintFormProps> = ({
 }) => {
   const { slug } = useParams<{ slug: string }>();
   const { toast } = useToast();
-  const { isConnected, wallet, connectWallet } = useWallet();
-  
   const [quantity, setQuantity] = useState(1);
-  const [isMinting, setIsMinting] = useState(false);
   
   const decrementQuantity = () => {
     if (quantity > 1) {
@@ -62,53 +57,11 @@ const MintForm: React.FC<MintFormProps> = ({
   };
 
   const handleMint = async () => {
-    if (!isConnected) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet to mint",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!contractAddress) {
-      toast({
-        title: "Contract not found",
-        description: "The NFT contract address is not available",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      setIsMinting(true);
-      
-      // In a real implementation, this would use the NFT contract to mint
-      // Using ethers.js to interact with the smart contract
-      const totalPrice = (parseFloat(price) * quantity).toString();
-      
-      // Simulate minting transaction delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Show success message
-      toast({
-        title: "Success!",
-        description: `Successfully minted ${quantity} NFT${quantity > 1 ? 's' : ''}!`,
-        variant: "default",
-      });
-      
-      // Reset quantity after successful mint
-      setQuantity(1);
-    } catch (error: any) {
-      console.error("Minting error:", error);
-      toast({
-        title: "Minting failed",
-        description: error.message || "There was an error while minting. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsMinting(false);
-    }
+    toast({
+      title: "Wallet Connection Disabled",
+      description: "Wallet connection functionality has been removed from this application.",
+      variant: "destructive",
+    });
   };
 
   return (
@@ -188,31 +141,13 @@ const MintForm: React.FC<MintFormProps> = ({
       </CardContent>
       
       <CardFooter>
-        {!isConnected ? (
-          <Button 
-            onClick={connectWallet}
-            className="w-full bg-aura-purple hover:bg-aura-purple-dark"
-          >
-            Connect Wallet to Mint
-          </Button>
-        ) : (
-          <Button 
-            onClick={handleMint} 
-            disabled={isMinting || availableSupply === 0}
-            className="w-full bg-aura-purple hover:bg-aura-purple-dark"
-          >
-            {isMinting ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Minting...
-              </>
-            ) : availableSupply === 0 ? (
-              "Sold Out"
-            ) : (
-              `Mint ${quantity > 1 ? quantity : ''} NFT${quantity > 1 ? 's' : ''}`
-            )}
-          </Button>
-        )}
+        <Button 
+          onClick={handleMint} 
+          disabled={true}
+          className="w-full bg-gray-400"
+        >
+          Wallet Connection Disabled
+        </Button>
       </CardFooter>
     </Card>
   );

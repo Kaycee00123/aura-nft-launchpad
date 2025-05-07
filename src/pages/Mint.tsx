@@ -1,16 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { mockNFTDrops } from '@/lib/mock-data';
 import MintForm from '@/components/mint/MintForm';
-import { useWallet } from '@/context/WalletContext';
 import { Loader } from 'lucide-react';
 
 const Mint = () => {
   const { slug } = useParams<{ slug: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [dropData, setDropData] = useState<any>(null);
-  const { isConnected } = useWallet();
 
   useEffect(() => {
     // Simulating data fetching

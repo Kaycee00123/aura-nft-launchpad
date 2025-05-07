@@ -9,8 +9,6 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Plus } from "lucide-react";
-import WalletButton from "@/components/wallet/WalletButton";
-import NetworkDisplay from "@/components/wallet/NetworkDisplay";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,11 +41,8 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Wallet Connect Button and Network Display */}
+          {/* Action Buttons */}
           <div className="flex items-center space-x-4">
-            <NetworkDisplay className="hidden md:flex" />
-            <WalletButton />
-            
             <Link to="/dashboard/create">
               <Button className="hidden md:flex items-center bg-aura-purple hover:bg-aura-purple-dark text-white">
                 <Plus className="h-4 w-4 mr-2" />
@@ -121,9 +116,6 @@ export default function Header() {
             >
               My Drops
             </Link>
-            <div className="px-4 py-2">
-              <NetworkDisplay />
-            </div>
           </div>
         )}
       </div>

@@ -1,11 +1,7 @@
 
 import React from 'react';
-import { useWallet } from '@/context/WalletContext';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check } from '@/components/icons/Check';
-import { Wallet, AlertCircle, Download } from 'lucide-react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { AlertCircle } from 'lucide-react';
 
 interface ConnectWalletPromptProps {
   title?: string;
@@ -15,90 +11,31 @@ interface ConnectWalletPromptProps {
 
 const ConnectWalletPrompt: React.FC<ConnectWalletPromptProps> = ({
   title = "Connect Your Wallet",
-  description = "You need to connect your wallet to continue",
+  description = "Wallet connection is currently disabled",
   requiredAction = "Continue"
 }) => {
-  const { isConnected, walletDetected } = useWallet();
-
-  const handleInstallWallet = () => {
-    // Open MetaMask download page in a new tab
-    window.open('https://metamask.io/download/', '_blank');
-  };
-
   return (
     <Card className="w-full max-w-md mx-auto border shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {isConnected ? (
-            <>
-              <Check className="h-5 w-5 text-green-500" />
-              <span>Wallet Connected</span>
-            </>
-          ) : (
-            <>
-              <Wallet className="h-5 w-5 text-aura-purple" />
-              <span>{title}</span>
-            </>
-          )}
+          <span>{title}</span>
         </CardTitle>
-        <CardDescription>
-          {isConnected 
-            ? "Your wallet is connected successfully!" 
-            : description
-          }
-        </CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {!isConnected && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-            <div className="flex">
-              <AlertCircle className="h-5 w-5 text-amber-500 mr-2" />
-              <div className="text-sm text-amber-800">
-                To {requiredAction.toLowerCase()}, you need to {walletDetected ? 'connect' : 'install'} a wallet first.
-              </div>
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+          <div className="flex">
+            <AlertCircle className="h-5 w-5 text-amber-500 mr-2" />
+            <div className="text-sm text-amber-800">
+              Wallet connection has been disabled in this application.
             </div>
           </div>
-        )}
-        
-        {!isConnected && !walletDetected && (
-          <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
-            <p className="text-sm mb-2">No wallet detected. You need a Web3 wallet like MetaMask to interact with this platform.</p>
-            <ol className="list-decimal list-inside text-sm space-y-1 text-gray-700">
-              <li>Install MetaMask or another wallet extension</li>
-              <li>Create or import a wallet</li>
-              <li>Return to this page and connect</li>
-            </ol>
-          </div>
-        )}
+        </div>
       </CardContent>
       
       <CardFooter className="flex justify-center">
-        {!isConnected && (
-          walletDetected ? (
-            <div className="w-full">
-              <ConnectButton.Custom>
-                {({ openConnectModal }) => (
-                  <Button 
-                    onClick={openConnectModal}
-                    className="w-full bg-aura-purple hover:bg-aura-purple-dark flex items-center justify-center gap-2"
-                  >
-                    <Wallet className="h-4 w-4" />
-                    Connect Wallet
-                  </Button>
-                )}
-              </ConnectButton.Custom>
-            </div>
-          ) : (
-            <Button 
-              onClick={handleInstallWallet}
-              className="w-full bg-aura-purple hover:bg-aura-purple-dark flex items-center justify-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Install Wallet
-            </Button>
-          )
-        )}
+        {/* Empty footer */}
       </CardFooter>
     </Card>
   );
