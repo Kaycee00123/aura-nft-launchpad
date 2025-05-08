@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
-  createWeb3Modal
+  createWeb3Modal,
+  useWeb3Modal
 } from '@web3modal/wagmi/react';
 import { 
   useAccount, 
@@ -9,17 +10,49 @@ import {
   useDisconnect,
   useChainId,
   useSwitchChain,
-  type Config
+  type Config,
+  configureChains,
+  createConfig,
 } from 'wagmi';
 import { Chain } from "@/lib/wallet-utils";
 import { SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
 import { useToast } from "@/hooks/use-toast";
+import { publicProvider } from 'wagmi/providers/public';
+import { WalletConnectConnector } from 'wagmi/connectors/walletConnect';
 
 // Project ID from WalletConnect - Replace with your actual Project ID
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
+// Configure chains & providers
+const { chains, publicClient } = configureChains(
+  SUPPORTED_CHAINS.map(chain => ({ 
+    id: chain.id, 
+    name: chain.name,
+    network: chain.name.toLowerCase(),
+    nativeCurrency: {
+      name: chain.nativeCurrency,
+      symbol: chain.symbol,
+      decimals: 18
+    }
+  })), 
+  [publicProvider()]
+);
+
+// Set up wagmi config
+const wagmiConfig = createConfig({
+  autoConnect: true,
+  connectors: [
+    new WalletConnectConnector({ 
+      chains, 
+      options: { projectId }
+    })
+  ],
+  publicClient,
+});
+
 // Create Web3Modal instance
 createWeb3Modal({
+  wagmiConfig,
   projectId,
   enableAnalytics: false, // Optional
   themeMode: 'light',
@@ -76,6 +109,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { disconnect } = useDisconnect();
   const [isLoading, setIsLoading] = useState(false);
   const [walletDetected, setWalletDetected] = useState(false);
+  const { open } = useWeb3Modal();
   
   // Check for wallet providers on component mount
   useEffect(() => {
@@ -103,8 +137,6 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const connectWallet = async () => {
     try {
       setIsLoading(true);
-      // Use Web3Modal directly
-      const { open } = await import('@web3modal/wagmi/react');
       await open();
     } catch (error: any) {
       console.error("Error connecting wallet:", error);
