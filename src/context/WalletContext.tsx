@@ -10,44 +10,46 @@ import {
   useDisconnect,
   useChainId,
   useSwitchChain,
-  type Config,
-  configureChains,
   createConfig,
+  type Config
 } from 'wagmi';
 import { Chain } from "@/lib/wallet-utils";
 import { SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
 import { useToast } from "@/hooks/use-toast";
-import { publicProvider } from 'wagmi/providers/public';
-import { WalletConnectConnector } from 'wagmi/connectors/walletConnect';
+import { http } from 'wagmi/transport';
+import { walletConnect } from 'wagmi/connectors';
+import { mainnet, arbitrum, base, sepolia } from 'wagmi/chains';
 
 // Project ID from WalletConnect - Replace with your actual Project ID
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
-// Configure chains & providers
-const { chains, publicClient } = configureChains(
-  SUPPORTED_CHAINS.map(chain => ({ 
-    id: chain.id, 
-    name: chain.name,
-    network: chain.name.toLowerCase(),
-    nativeCurrency: {
-      name: chain.nativeCurrency,
-      symbol: chain.symbol,
-      decimals: 18
-    }
-  })), 
-  [publicProvider()]
-);
+// Convert our custom chains to wagmi chain format
+const wagmiChains = [
+  mainnet, base, arbitrum, sepolia,
+  // Additional custom chains can go here
+];
 
-// Set up wagmi config
+// Create wagmi config
 const wagmiConfig = createConfig({
-  autoConnect: true,
+  chains: wagmiChains,
+  transports: {
+    [mainnet.id]: http(),
+    [base.id]: http(),
+    [arbitrum.id]: http(),
+    [sepolia.id]: http(),
+    // Add other chains as needed
+  },
   connectors: [
-    new WalletConnectConnector({ 
-      chains, 
-      options: { projectId }
+    walletConnect({
+      projectId,
+      metadata: {
+        name: 'NFT Launchpad',
+        description: 'On-chain NFT Launchpad platform',
+        url: window.location.origin,
+        icons: [`${window.location.origin}/favicon.ico`]
+      }
     })
-  ],
-  publicClient,
+  ]
 });
 
 // Create Web3Modal instance
