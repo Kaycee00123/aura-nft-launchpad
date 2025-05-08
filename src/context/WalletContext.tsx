@@ -21,7 +21,7 @@ import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
 // Project ID from WalletConnect - Replace with your actual Project ID
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
-// Create Web3Modal instance
+// Create Web3Modal instance - removing the 'chains' property which isn't supported
 createWeb3Modal({
   projectId,
   enableAnalytics: false, // Optional
@@ -29,7 +29,6 @@ createWeb3Modal({
   themeVariables: {
     '--w3m-accent': '#6d28d9', // Purple accent color
   },
-  chains: [mainnet, base, arbitrum, sepolia],
   // The connectors are automatically imported from the wagmi config
   // in the WagmiProvider, so we don't need to specify them here
 });
