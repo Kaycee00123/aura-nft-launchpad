@@ -11,13 +11,9 @@ import {
   useChainId,
   useSwitchChain,
   createConfig,
-  type Config
 } from 'wagmi';
-import { Chain } from "@/lib/wallet-utils";
-import { SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
+import { Chain, SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
 import { useToast } from "@/hooks/use-toast";
-import { http } from 'wagmi/transport';
-import { walletConnect } from 'wagmi/connectors';
 import { mainnet, arbitrum, base, sepolia } from 'wagmi/chains';
 
 // Project ID from WalletConnect - Replace with your actual Project ID
@@ -29,26 +25,30 @@ const wagmiChains = [
   // Additional custom chains can go here
 ];
 
-// Create wagmi config
+// Create wagmi config with compatible API
 const wagmiConfig = createConfig({
   chains: wagmiChains,
   transports: {
-    [mainnet.id]: http(),
-    [base.id]: http(),
-    [arbitrum.id]: http(),
-    [sepolia.id]: http(),
-    // Add other chains as needed
+    [mainnet.id]: { url: mainnet.rpcUrls.default.http[0] },
+    [base.id]: { url: base.rpcUrls.default.http[0] },
+    [arbitrum.id]: { url: arbitrum.rpcUrls.default.http[0] },
+    [sepolia.id]: { url: sepolia.rpcUrls.default.http[0] },
   },
   connectors: [
-    walletConnect({
-      projectId,
-      metadata: {
-        name: 'NFT Launchpad',
-        description: 'On-chain NFT Launchpad platform',
-        url: window.location.origin,
-        icons: [`${window.location.origin}/favicon.ico`]
-      }
-    })
+    {
+      id: 'walletConnect',
+      type: 'walletConnect',
+      init: (config) => ({
+        projectId,
+        metadata: {
+          name: 'NFT Launchpad',
+          description: 'On-chain NFT Launchpad platform',
+          url: typeof window !== 'undefined' ? window.location.origin : '',
+          icons: typeof window !== 'undefined' ? [`${window.location.origin}/favicon.ico`] : []
+        },
+        showQrModal: true,
+      }),
+    }
   ]
 });
 

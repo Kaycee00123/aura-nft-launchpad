@@ -5,8 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletProvider } from "@/context/WalletContext";
-import { WagmiProvider, createConfig, http } from "wagmi";
-import { mainnet, base, arbitrum, sepolia } from "wagmi/chains";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Explore from "./pages/Explore";
@@ -21,54 +19,41 @@ import StatsPage from "./pages/dashboard/StatsPage";
 import AdminPanel from "./pages/AdminPanel";
 import DropSuccessPage from "./pages/dashboard/DropSuccessPage";
 
-// Create a client for wagmi
-const config = createConfig({
-  chains: [mainnet, base, arbitrum, sepolia],
-  transports: {
-    [mainnet.id]: http(),
-    [base.id]: http(),
-    [arbitrum.id]: http(),
-    [sepolia.id]: http()
-  },
-});
-
 // Create a client for react-query
 const queryClient = new QueryClient();
 
 const App = () => (
-  <WagmiProvider config={config}>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <WalletProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/drop/:slug" element={<DropDetails />} />
-              <Route path="/mint/:slug" element={<Mint />} />
-              <Route path="/creator/:username" element={<CreatorProfile />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              
-              {/* Dashboard Routes - No auth required now */}
-              <Route path="/dashboard" element={<Dashboard />}>
-                <Route index element={<StatsPage />} />
-                <Route path="create" element={<CreateDrop />} />
-                <Route path="collection/create" element={<CreateCollection />} />
-                <Route path="drops" element={<MyDrops />} />
-                <Route path="drops/success" element={<DropSuccessPage />} />
-                <Route path="stats" element={<StatsPage />} />
-              </Route>
-              
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
-        </WalletProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </WagmiProvider>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <WalletProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/drop/:slug" element={<DropDetails />} />
+            <Route path="/mint/:slug" element={<Mint />} />
+            <Route path="/creator/:username" element={<CreatorProfile />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            
+            {/* Dashboard Routes - No auth required now */}
+            <Route path="/dashboard" element={<Dashboard />}>
+              <Route index element={<StatsPage />} />
+              <Route path="create" element={<CreateDrop />} />
+              <Route path="collection/create" element={<CreateCollection />} />
+              <Route path="drops" element={<MyDrops />} />
+              <Route path="drops/success" element={<DropSuccessPage />} />
+              <Route path="stats" element={<StatsPage />} />
+            </Route>
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </WalletProvider>
+    </BrowserRouter>
+  </QueryClientProvider>
 );
 
 export default App;
