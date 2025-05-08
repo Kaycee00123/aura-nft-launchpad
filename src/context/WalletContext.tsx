@@ -1,9 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
-  createWeb3Modal, 
-  useWeb3Modal, 
-  useWeb3ModalState 
+  createWeb3Modal
 } from '@web3modal/wagmi/react';
 import { 
   useAccount, 
@@ -11,17 +9,16 @@ import {
   useDisconnect,
   useChainId,
   useSwitchChain,
+  type Config
 } from 'wagmi';
-import { injected, walletConnect } from 'wagmi/connectors';
 import { Chain } from "@/lib/wallet-utils";
 import { SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
 import { useToast } from "@/hooks/use-toast";
-import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
 
 // Project ID from WalletConnect - Replace with your actual Project ID
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
-// Create Web3Modal instance - removing the 'chains' property which isn't supported
+// Create Web3Modal instance
 createWeb3Modal({
   projectId,
   enableAnalytics: false, // Optional
@@ -29,8 +26,6 @@ createWeb3Modal({
   themeVariables: {
     '--w3m-accent': '#6d28d9', // Purple accent color
   },
-  // The connectors are automatically imported from the wagmi config
-  // in the WagmiProvider, so we don't need to specify them here
 });
 
 // Define proper types for our wallet context
@@ -75,8 +70,6 @@ const WalletContext = createContext<WalletContextType>(defaultWalletContext);
 
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
-  const { open } = useWeb3Modal();
-  const { selectedNetworkId } = useWeb3ModalState();
   const { address, isConnected, connector } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -110,6 +103,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const connectWallet = async () => {
     try {
       setIsLoading(true);
+      // Use Web3Modal directly
+      const { open } = await import('@web3modal/wagmi/react');
       await open();
     } catch (error: any) {
       console.error("Error connecting wallet:", error);
