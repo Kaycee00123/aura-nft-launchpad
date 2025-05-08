@@ -1,48 +1,37 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { createWeb3Modal, useWeb3Modal, useWeb3ModalState } from '@web3modal/wagmi/react';
 import { 
-  createConfig, 
+  createWeb3Modal, 
+  useWeb3Modal, 
+  useWeb3ModalState 
+} from '@web3modal/wagmi/react';
+import { 
   useAccount, 
   useBalance, 
   useDisconnect,
   useChainId,
   useSwitchChain,
-  http
 } from 'wagmi';
-import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { Chain } from "@/lib/wallet-utils";
 import { SUPPORTED_CHAINS, getChainById } from "@/lib/wallet-utils";
 import { useToast } from "@/hooks/use-toast";
+import { mainnet, base, arbitrum, sepolia } from 'wagmi/chains';
 
-// Project ID from WalletConnect
+// Project ID from WalletConnect - Replace with your actual Project ID
 const projectId = 'YOUR_WALLET_CONNECT_PROJECT_ID';
 
-// Create wagmi config with v2 API
-export const config = createConfig({
-  chains: [mainnet, base, arbitrum, sepolia],
-  transports: {
-    [mainnet.id]: http(),
-    [base.id]: http(),
-    [arbitrum.id]: http(),
-    [sepolia.id]: http()
-  },
-  connectors: [
-    injected(),
-    walletConnect({ projectId })
-  ],
-});
-
-// Create Web3Modal
+// Create Web3Modal instance
 createWeb3Modal({
-  wagmiConfig: config,
   projectId,
-  enableAnalytics: false, // Optional, defaults to true
+  enableAnalytics: false, // Optional
   themeMode: 'light',
   themeVariables: {
     '--w3m-accent': '#6d28d9', // Purple accent color
-  }
+  },
+  chains: [mainnet, base, arbitrum, sepolia],
+  // The connectors are automatically imported from the wagmi config
+  // in the WagmiProvider, so we don't need to specify them here
 });
 
 // Define proper types for our wallet context
@@ -59,7 +48,7 @@ type WalletContextType = {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchToChain: (chainId: number) => Promise<boolean>;
-  supportedChains: any[];
+  supportedChains: Chain[];
   connectUserWallet: () => Promise<void>;
   walletDetected: boolean;
 };

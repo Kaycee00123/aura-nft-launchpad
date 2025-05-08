@@ -5,8 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletProvider } from "@/context/WalletContext";
-import { WagmiProvider } from "wagmi";
-import { config } from "@/context/WalletContext";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import { mainnet, base, arbitrum, sepolia } from "wagmi/chains";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Explore from "./pages/Explore";
@@ -21,6 +21,18 @@ import StatsPage from "./pages/dashboard/StatsPage";
 import AdminPanel from "./pages/AdminPanel";
 import DropSuccessPage from "./pages/dashboard/DropSuccessPage";
 
+// Create a client for wagmi
+const config = createConfig({
+  chains: [mainnet, base, arbitrum, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [base.id]: http(),
+    [arbitrum.id]: http(),
+    [sepolia.id]: http()
+  },
+});
+
+// Create a client for react-query
 const queryClient = new QueryClient();
 
 const App = () => (
